@@ -263,18 +263,18 @@ class TrieTestCase(unittest.TestCase):
 
     def _do_test_subtrie_iterator(self, trie_factory):
         """Subtrie iterator tests."""
-        d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CLS,
+                         {self._SHORT_KEY: 42, self._LONG_KEY: 43})
 
         long_key = self.key_from_key(self._LONG_KEY)
         prefix = self._LONG_PREFIXES[0]
 
-        self.assertEqual([42, 42], t.values(prefix=self._SHORT_KEY))
-        self.assertEqual([42, 42], list(t.itervalues(prefix=self._SHORT_KEY)))
-        self.assertEqual([42], t.values(prefix=prefix))
-        self.assertEqual([42], list(t.itervalues(prefix=prefix)))
+        self.assertEqual([42, 43], t.values(prefix=self._SHORT_KEY))
+        self.assertEqual([42, 43], list(t.itervalues(prefix=self._SHORT_KEY)))
+        self.assertEqual([43], t.values(prefix=prefix))
+        self.assertEqual([43], list(t.itervalues(prefix=prefix)))
 
-        expected_items = [(long_key, 42)]
+        expected_items = [(long_key, 43)]
         self.assertEqual(expected_items, t.items(prefix=prefix))
         self.assertEqual(expected_items, list(t.iteritems(prefix=prefix)))
 
@@ -283,8 +283,8 @@ class TrieTestCase(unittest.TestCase):
 
     def _do_test_shallow_iterator(self, trie_factory):
         """Shallow iterator test."""
-        d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CLS,
+                         {self._SHORT_KEY: 42, self._LONG_KEY: 43})
 
         self.assertEqual([42], t.values(shallow=True))
         self.assertEqual([42], list(t.itervalues(shallow=True)))
@@ -298,13 +298,32 @@ class TrieTestCase(unittest.TestCase):
         self.assertEqual([short_key], t.keys(shallow=True))
         self.assertEqual([short_key], list(t.iterkeys(shallow=True)))
 
+    def _do_test_post_order_iterator(self, trie_factory):
+        """Post-order iterator test."""
+        t = trie_factory(self._TRIE_CLS,
+                         {self._SHORT_KEY: 42, self._LONG_KEY: 43})
+
+        self.assertEqual([43, 42], t.values(post_order=True))
+        self.assertEqual([43, 42], list(t.itervalues(post_order=True)))
+
+        short_key = self.key_from_key(self._SHORT_KEY)
+        long_key = self.key_from_key(self._LONG_KEY)
+
+        expected_items = [(long_key, 43), (short_key, 42)]
+        self.assertEqual(expected_items, t.items(post_order=True))
+        self.assertEqual(expected_items, list(t.iteritems(post_order=True)))
+
+        self.assertEqual([long_key, short_key], t.keys(post_order=True))
+        self.assertEqual([long_key, short_key],
+                         list(t.iterkeys(post_order=True)))
+
     def _do_test_splice_operations(self, trie_factory):
         """Splice trie operations tests."""
-        d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CLS,
+                         {self._SHORT_KEY: 42, self._LONG_KEY: 43})
 
-        self.assertEqual([42, 42], list(t[self._SHORT_KEY:]))
-        self.assertEqual([42], list(t[self._LONG_PREFIXES[0]:]))
+        self.assertEqual([42, 43], list(t[self._SHORT_KEY:]))
+        self.assertEqual([43], list(t[self._LONG_PREFIXES[0]:]))
 
         t[self._SHORT_KEY:] = 24
         self.assertShortTrie(t, 24)

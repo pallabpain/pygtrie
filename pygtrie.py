@@ -89,7 +89,11 @@ class _Node(object):
         self.children = {}
         self.value = _SENTINEL
 
-    def iterate(self, path, shallow, iteritems):
+    @property
+    def has_value(self):
+        return self.value is not _SENTINEL
+
+    def iterate(self, path, shallow, post_order, iteritems):
         """Yields all the nodes with values associated to them in the trie.
 
         Args:
@@ -97,6 +101,9 @@ class _Node(object):
                 returning value of this node and as a prefix for children.
             shallow: Perform a shallow traversal, i.e. do not yield nodes if
                 their prefix has been yielded.
+            post_order: If True, perform post-order traversal, i.e. yield
+                children before yielding their parents.  The default is to
+                perform pre-order traversal.
             iteritems: A function taking dictionary as argument and returning
                 iterator over its items.  Something other than dict.iteritems
                 may be given to enable sorting.
@@ -106,24 +113,30 @@ class _Node(object):
         """
         # Use iterative function with stack on the heap so we don't hit Python's
         # recursion depth limits.
+        post_order = post_order and not shallow
         node = self
         stack = []
         while True:
-            if node.value is not _SENTINEL:
+            is_set = node.value is not _SENTINEL
+            has_subtrie = bool(node.children)
+
+            if is_set and not (post_order and has_subtrie):
                 yield path, node.value
 
-            if (not shallow or node.value is _SENTINEL) and node.children:
-                stack.append(iter(iteritems(node.children)))
+            if has_subtrie and not (shallow and is_set):
+                stack.append((node.value, iter(iteritems(node.children))))
                 path.append(None)
 
             while True:
                 try:
-                    step, node = next(stack[-1])
+                    step, node = next(stack[-1][1])
                     path[-1] = step
                     break
                 except StopIteration:
-                    stack.pop()
+                    value, _ = stack.pop()
                     path.pop()
+                    if post_order and value is not _SENTINEL:
+                        yield path, value
                 except IndexError:
                     return
 
@@ -153,7 +166,7 @@ class _Node(object):
 
         args = [path_conv, tuple(path), children()]
 
-        if self.value is not _SENTINEL:
+        if self.has_value:
             args.append(self.value)
 
         return node_factory(*args)
@@ -184,7 +197,7 @@ class _Node(object):
         return not self.__eq__(other)
 
     def __bool__(self):
-        return bool(self.value is not _SENTINEL or self.children)
+        return bool(self.has_value or self.children)
 
     __nonzero__ = __bool__
     __hash__ = None
@@ -233,7 +246,7 @@ class _Node(object):
         node = self
         stack = []
         while True:
-            if node.value is not _SENTINEL:
+            if node.has_value:
                 last_cmd = 0
                 state.append(node.value)
             stack.append(_iteritems(node.children))
@@ -417,7 +430,7 @@ class Trie(_abc.MutableMapping):
 
     # pylint: disable=arguments-differ
 
-    def iteritems(self, prefix=_SENTINEL, shallow=False):
+    def iteritems(self, prefix=_SENTINEL, shallow=False, post_order=False):
         """Yields all nodes with associated values with given prefix.
 
         Only nodes with values are output.  For example::
@@ -441,16 +454,26 @@ class Trie(_abc.MutableMapping):
             >>> t.items(prefix='foo')
             [('foo', 'Foo'), ('foo/bar/baz', 'Baz')]
 
-        With ``shallow`` argument, if a node has value associated with it, it's
-        children are not traversed even if they exist which can be seen in::
+        With ``shallow`` argument set to ``True``, if a node has value
+        associated with it, it's children are not traversed even if they exist
+        which can be seen in::
 
             >>> sorted(t.items(shallow=True))
             [('foo', 'Foo'), ('qux', 'Qux')]
+
+        With ``post_order` argument set to ``True``, child nodes are yielded
+        before their parents.  For example::
+
+            >>> t.items(post_order=True, prefix='foo')
+            [('foo/bar/baz', 'Baz'), ('foo', 'Foo')]
 
         Args:
             prefix: Prefix to limit iteration to.
             shallow: Perform a shallow traversal, i.e. do not yield items if
                 their prefix has been yielded.
+            post_order: If True, perform post-order traversal, i.e. yield
+                children before yielding their parents.  The default is to
+                perform pre-order traversal.
 
         Yields:
             ``(key, value)`` tuples.
@@ -460,10 +483,10 @@ class Trie(_abc.MutableMapping):
         """
         node, _ = self._get_node(prefix)
         for path, value in node.iterate(list(self.__path_from_key(prefix)),
-                                        shallow, self._iteritems):
+                                        shallow, post_order, self._iteritems):
             yield (self._key_from_path(path), value)
 
-    def iterkeys(self, prefix=_SENTINEL, shallow=False):
+    def iterkeys(self, prefix=_SENTINEL, shallow=False, post_order=False):
         """Yields all keys having associated values with given prefix.
 
         This is equivalent to taking first element of tuples generated by
@@ -473,6 +496,9 @@ class Trie(_abc.MutableMapping):
             prefix: Prefix to limit iteration to.
             shallow: Perform a shallow traversal, i.e. do not yield keys if
                 their prefix has been yielded.
+            post_order: If True, perform post-order traversal, i.e. yield keys
+                of children before yielding their parents' keys.  The default is
+                to perform pre-order traversal.
 
         Yields:
             All the keys (with given prefix) with associated values in the trie.
@@ -480,10 +506,10 @@ class Trie(_abc.MutableMapping):
         Raises:
             KeyError: If ``prefix`` does not match any node.
         """
-        for key, _ in self.iteritems(prefix=prefix, shallow=shallow):
+        for key, _ in self.iteritems(prefix, shallow, post_order):
             yield key
 
-    def itervalues(self, prefix=_SENTINEL, shallow=False):
+    def itervalues(self, prefix=_SENTINEL, shallow=False, post_order=False):
         """Yields all values associated with keys with given prefix.
 
         This is equivalent to taking second element of tuples generated by
@@ -493,6 +519,9 @@ class Trie(_abc.MutableMapping):
             prefix: Prefix to limit iteration to.
             shallow: Perform a shallow traversal, i.e. do not yield values if
                 their prefix has been yielded.
+            post_order: If True, perform post-order traversal, i.e. yield values
+                of children before yielding their parents' values.  The default
+                is to perform pre-order traversal.
 
         Yields:
             All the values associated with keys (with given prefix) in the trie.
@@ -502,32 +531,32 @@ class Trie(_abc.MutableMapping):
         """
         node, _ = self._get_node(prefix)
         for _, value in node.iterate(list(self.__path_from_key(prefix)),
-                                     shallow, self._iteritems):
+                                     shallow, post_order, self._iteritems):
             yield value
 
-    def items(self, prefix=_SENTINEL, shallow=False):
+    def items(self, prefix=_SENTINEL, shallow=False, post_order=False):
         """Returns a list of ``(key, value)`` pairs in given subtrie.
 
         This is equivalent to constructing a list from generator returned by
         :func:`Trie.iteritems` which see for more detailed documentation.
         """
-        return list(self.iteritems(prefix=prefix, shallow=shallow))
+        return list(self.iteritems(prefix, shallow, post_order))
 
-    def keys(self, prefix=_SENTINEL, shallow=False):
+    def keys(self, prefix=_SENTINEL, shallow=False, post_order=False):
         """Returns a list of all the keys, with given prefix, in the trie.
 
         This is equivalent to constructing a list from generator returned by
         :func:`Trie.iterkeys` which see for more detailed documentation.
         """
-        return list(self.iterkeys(prefix=prefix, shallow=shallow))
+        return list(self.iterkeys(prefix, shallow, post_order))
 
-    def values(self, prefix=_SENTINEL, shallow=False):
+    def values(self, prefix=_SENTINEL, shallow=False, post_order=False):
         """Returns a list of values in given subtrie.
 
         This is equivalent to constructing a list from generator returned by
         :func:`Trie.iterivalues` which see for more detailed documentation.
         """
-        return list(self.itervalues(prefix=prefix, shallow=shallow))
+        return list(self.itervalues(prefix, shallow, post_order))
 
     def __len__(self):
         """Returns number of values in a trie.
@@ -593,7 +622,7 @@ class Trie(_abc.MutableMapping):
             node, _ = self._get_node(key)
         except KeyError:
             return 0
-        return ((self.HAS_VALUE * int(node.value is not _SENTINEL)) |
+        return ((self.HAS_VALUE * int(node.has_value)) |
                 (self.HAS_SUBTRIE * int(bool(node.children))))
 
     def has_key(self, key):
@@ -770,9 +799,9 @@ class Trie(_abc.MutableMapping):
             ShortKeyError: If the node has no value associated with it and
                 ``default`` has not been given.
         """
-        value = node.value
-        if value is _SENTINEL:
+        if not node.has_value:
             raise ShortKeyError()
+        value = node.value
         node.value = _SENTINEL
         self._cleanup_trace(trace)
         return value
@@ -925,7 +954,7 @@ class Trie(_abc.MutableMapping):
         @property
         def is_set(self):
             """Returns whether the node has value assigned to it."""
-            return self._node.value is not _SENTINEL
+            return self._node.has_value
 
         @property
         def has_subtrie(self):
