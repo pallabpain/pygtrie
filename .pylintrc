@@ -51,7 +51,9 @@ disable=attribute-defined-outside-init,
         too-many-public-methods,
         too-many-lines,
         too-few-public-methods,
-        too-many-ancestors,no-else-return
+        too-many-ancestors,
+        no-else-return,
+        useless-object-inheritance
 
 
 [REPORTS]

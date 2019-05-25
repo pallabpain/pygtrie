@@ -72,7 +72,6 @@ except NameError:  # Python 2 compatibility
 
 class ShortKeyError(KeyError):
     """Raised when given key is a prefix of a longer key."""
-    pass
 
 
 _SENTINEL = object()
@@ -1492,7 +1491,8 @@ class PrefixSet(_abc.MutableSet):
         elif prefix in self:
             # Make sure the type of returned keys is consistent.
             # pylint: disable=protected-access
-            return self._trie._key_from_path(self._trie._path_from_key(prefix)),
+            return (
+                self._trie._key_from_path(self._trie._path_from_key(prefix)),)
         else:
             return ()
 
