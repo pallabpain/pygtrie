@@ -40,7 +40,7 @@ from __future__ import absolute_import, division, print_function
 
 __author__ = 'Michal Nazarewicz <mina86@mina86.com>'
 __copyright__ = ('Copyright 2014-2017 Google LLC',
-                 'Copyright 2018 Michal Nazarewicz <mina86@mina86.com>')
+                 'Copyright 2018-2019 Michal Nazarewicz <mina86@mina86.com>')
 
 
 import collections as _collections
@@ -52,7 +52,6 @@ except ImportError:  # Python 2 compatibility
 # pylint: disable=invalid-name
 if hasattr(dict, 'iteritems'):  # Python 2 compatibility
     _iteritems = lambda d: d.iteritems()
-    _iterkeys = lambda d: d.iterkeys()
     def _sorted_iteritems(d):
         """Returns d's items in sorted order."""
         items = d.items()
@@ -61,7 +60,6 @@ if hasattr(dict, 'iteritems'):  # Python 2 compatibility
 else:
     _sorted_iteritems = lambda d: sorted(d.items())
     _iteritems = lambda d: iter(d.items())
-    _iterkeys = lambda d: iter(d.keys())
 
 try:
     _basestring = basestring
@@ -821,8 +819,7 @@ class Trie(_abc.MutableMapping):
         node = self._root
         trace = [(None, node)]
         while node.value is _SENTINEL:
-            step = next(_iterkeys(node.children))
-            node = node.children[step]
+            step, node = next(_iteritems(node.children))
             trace.append((step, node))
         return (self._key_from_path((step for step, _ in trace[1:])),
                 self._pop_from_node(node, trace))
