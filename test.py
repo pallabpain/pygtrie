@@ -4,7 +4,7 @@
 
 __author__ = 'Michal Nazarewicz <mina86@mina86.com>'
 __copyright__ = ('Copyright 2014-2017 Google LLC',
-                 'Copyright 2018 Michal Nazarewicz <mina86@mina86.com>')
+                 'Copyright 2018-2019 Michal Nazarewicz <mina86@mina86.com>')
 
 
 import array
@@ -497,11 +497,16 @@ class TrieTestCase(unittest.TestCase):
         b = self._TRIE_CLS({self._SHORT_KEY: 42})
         c = self._TRIE_CLS({self._SHORT_KEY: '42'})
         d = self._TRIE_CLS({self._SHORT_KEY2: 42})
+        e = self._TRIE_CLS()
 
         self.assertEqual(a, a)
         self.assertEqual(a, b)
+        self.assertEqual(e, e)
+        self.assertEqual(e, self._TRIE_CLS())
         self.assertNotEqual(a, c)
         self.assertNotEqual(a, d)
+        self.assertNotEqual(a, e)
+        self.assertNotEqual(e, a)
 
     _PICKLED_PROTO_0 = (
         'Y2NvcHlfcmVnCl9yZWNvbnN0cnVjdG9yCnAwCihjcHlndHJpZQpUcmllCnAxCmNfX2J1aW'
@@ -592,6 +597,11 @@ class CharTrieTestCase(TrieTestCase):
                                  factory=pygtrie.CharTrie)
         self.assertUnpickling(want, pickled)
 
+    def test_step_repr(self):
+        t = self._TRIE_CLS({'foo': 42, 'foobar': 64})
+        self.assertEqual("('foo': 42)", repr(t.shortest_prefix('foobarbaz')))
+        self.assertEqual("('foobar': 64)", repr(t.longest_prefix('foobarbaz')))
+        self.assertEqual("(None Step)", repr(t.longest_prefix('qux')))
 
 class StringTrieTestCase(TrieTestCase):
     _TRIE_CLS = pygtrie.StringTrie
