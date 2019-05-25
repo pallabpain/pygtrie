@@ -180,11 +180,11 @@ class _Node(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __bool__(self):
-        return bool(self.value is not _SENTINEL or self.children)
+    def is_empty(self):
+        """Returns whether node has a value or children."""
+        return self.value is _SENTINEL and not self.children
 
-    __nonzero__ = __bool__
-    __hash__ = None
+    __bool__ = __nonzero__ = __hash__ = None
 
     def __getstate__(self):
         """Get state used for pickling.
@@ -404,7 +404,7 @@ class Trie(_abc.MutableMapping):
                 node = node.children.setdefault(step, _Node())
             else:
                 node = node.children.get(step)
-                if not node:
+                if node is None:
                     raise KeyError(key)
             trace.append((step, node))
         return node, trace
@@ -534,7 +534,7 @@ class Trie(_abc.MutableMapping):
         return sum(1 for _ in self.itervalues())
 
     def __bool__(self):
-        return self._root.__bool__()
+        return not self._root.is_empty()
 
     __nonzero__ = __bool__
     __hash__ = None
@@ -747,7 +747,7 @@ class Trie(_abc.MutableMapping):
         """
         i = len(trace) - 1  # len(path) >= 1 since root is always there
         step, node = trace[i]
-        while i and not node:
+        while i and node.is_empty():
             i -= 1
             parent_step, parent = trace[i]
             del parent.children[step]
@@ -994,7 +994,7 @@ class Trie(_abc.MutableMapping):
             if pos == len(path):
                 break
             node = node.children.get(path[pos])
-            if not node:
+            if node is None:
                 raise KeyError(key)
             pos += 1
 
