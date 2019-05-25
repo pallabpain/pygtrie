@@ -52,13 +52,13 @@ except ImportError:  # Python 2 compatibility
 # pylint: disable=invalid-name
 if hasattr(dict, 'iteritems'):  # Python 2 compatibility
     _iteritems = lambda d: d.iteritems()
-    def _sorted_iteritems(d):
+    def _sorted_items(d):
         """Returns d's items in sorted order."""
         items = d.items()
         items.sort()
-        return iter(items)
+        return items
 else:
-    _sorted_iteritems = lambda d: sorted(d.items())
+    _sorted_items = lambda d: sorted(d.items())
     _iteritems = lambda d: iter(d.items())
 
 try:
@@ -95,7 +95,7 @@ class _Node(object):
             shallow: Perform a shallow traversal, i.e. do not yield nodes if
                 their prefix has been yielded.
             iteritems: A function taking dictionary as argument and returning
-                iterator over its items.  Something other than dict.iteritems
+                an iterable over its items.  Something other than dict.iteritems
                 may be given to enable sorting.
 
         Yields:
@@ -132,7 +132,7 @@ class _Node(object):
             path_conv: Callable to convert node path to a key.
             path: Current path for this node.
             iteritems: A function taking dictionary as argument and returning
-                iterator over its items.  Something other than dict.iteritems
+                an iterable over its items.  Something other than dict.iteritems
                 may be given to enable sorting.
 
         Returns:
@@ -300,15 +300,15 @@ class Trie(_abc.MutableMapping):
 
     @property
     def _iteritems(self):
-        """Returns function yielding over dict's items possibly in sorted order.
+        """Returns function returning iterable over items of its argument.
 
         Returns:
-            A function iterating over items of a dictionary given as an
-            argument. If child nodes sorting has been enabled (via
-            :func:`Trie.enable_sorting` method), returned function will go
-            through the items in sorted order..
+            A function which returns an iterable over items in a dictionary
+            passed to it as an argument.  If child nodes sorting has been
+            enabled (via :func:`Trie.enable_sorting` method), returned function
+            will go through the items in sorted order.
         """
-        return _sorted_iteritems if self._sorted else _iteritems
+        return _sorted_items if self._sorted else _iteritems
 
     def enable_sorting(self, enable=True):
         """Enables sorting of child nodes when iterating and traversing.
