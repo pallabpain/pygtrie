@@ -80,11 +80,50 @@ class _Node(object):
 
     Stores value associated with the node and dictionary of children.
     """
-    __slots__ = ('children', 'value')
+    __slots__ = ('_children', 'value')
 
     def __init__(self):
-        self.children = {}
+        self._children = None
         self.value = _SENTINEL
+
+    def req_child(self, step, exc_arg, create=False):
+        """Returns child under given step or raises; optionally creates it."""
+        node = self._children and self._children.get(step)
+        if node is not None:
+            return node
+        elif create:
+            node = _Node()
+            self.set_child(step, node)
+            return node
+        else:
+            raise KeyError(exc_arg)
+
+    def set_child(self, step, node):
+        """Sets child under given step to given node."""
+        if self._children:
+            self._children[step] = node
+        else:
+            self._children = {step: node}
+
+    def del_child(self, step):
+        """Deletes child under given step.
+
+        Raises KeyError or TypeError if child with given step does not exist.
+        """
+        del self._children[step]
+        self._children = self._children or None
+
+    def iter_children(self):
+        """Returns iterator over (step, child) items; assumes node has some."""
+        return _iteritems(self._children)
+
+    def clear_children(self):
+        """Removes all children."""
+        self._children = None
+
+    def has_children(self):
+        """Returns whether the node has at least one child."""
+        return bool(self._children)
 
     def iterate(self, path, shallow, iteritems):
         """Yields all the nodes with values associated to them in the trie.
@@ -109,8 +148,9 @@ class _Node(object):
             if node.value is not _SENTINEL:
                 yield path, node.value
 
-            if (not shallow or node.value is _SENTINEL) and node.children:
-                stack.append(iter(iteritems(node.children)))
+            # pylint: disable=protected-access
+            if (not shallow or node.value is _SENTINEL) and node._children:
+                stack.append(iter(iteritems(node._children)))
                 path.append(None)
 
             while True:
@@ -144,9 +184,10 @@ class _Node(object):
         """
         def children():
             """Recursively traverses all of node's children."""
-            for step, node in iteritems(self.children):
-                yield node.traverse(node_factory, path_conv, path + [step],
-                                    iteritems)
+            if self._children:
+                for step, node in iteritems(self._children):
+                    yield node.traverse(node_factory, path_conv, path + [step],
+                                        iteritems)
 
         args = [path_conv, tuple(path), children()]
 
@@ -161,10 +202,15 @@ class _Node(object):
         a, b = self, other
         stack = []
         while True:
-            if a.value != b.value or len(a.children) != len(b.children):
+            # pylint: disable=protected-access
+            if a.value != b.value:
                 return False
-            if a.children:
-                stack.append((_iteritems(a.children), b.children))
+            if a._children:
+                if not b._children or len(a._children) != len(b._children):
+                    return False
+                stack.append((_iteritems(a._children), b._children))
+            elif b._children:
+                return False
 
             while True:
                 try:
@@ -180,7 +226,7 @@ class _Node(object):
 
     def is_empty(self):
         """Returns whether node has a value or children."""
-        return self.value is _SENTINEL and not self.children
+        return self.value is _SENTINEL and not self._children
 
     __bool__ = __nonzero__ = __hash__ = None
 
@@ -227,11 +273,13 @@ class _Node(object):
         last_cmd = 0
         node = self
         stack = []
+        empty_iter = iter(())
         while True:
             if node.value is not _SENTINEL:
                 last_cmd = 0
                 state.append(node.value)
-            stack.append(_iteritems(node.children))
+            children = node._children # pylint: disable=protected-access
+            stack.append(_iteritems(children) if children else empty_iter)
 
             while True:
                 step, node = next(stack[-1], (None, None))
@@ -266,8 +314,9 @@ class _Node(object):
                 del stack[cmd:]
             else:
                 while cmd > 0:
-                    stack.append(type(self)())
-                    stack[-2].children[next(state)] = stack[-1]
+                    parent, step, node = stack[-1], next(state), type(self)()
+                    stack.append(node)
+                    parent.set_child(step, node)
                     cmd -= 1
                 stack[-1].value = next(state)
 
@@ -398,12 +447,7 @@ class Trie(_abc.MutableMapping):
         node = self._root
         trace = [(None, node)]
         for step in self.__path_from_key(key):
-            if create:
-                node = node.children.setdefault(step, _Node())
-            else:
-                node = node.children.get(step)
-                if node is None:
-                    raise KeyError(key)
+            node = node.req_child(step, key, create=create)
             trace.append((step, node))
         return node, trace
 
@@ -588,8 +632,8 @@ class Trie(_abc.MutableMapping):
             node, _ = self._get_node(key)
         except KeyError:
             return 0
-        return ((self.HAS_VALUE * int(node.value is not _SENTINEL)) |
-                (self.HAS_SUBTRIE * int(bool(node.children))))
+        return ((self.HAS_VALUE * (node.value is not _SENTINEL)) |
+                (self.HAS_SUBTRIE * node.has_children()))
 
     def has_key(self, key):
         """Indicates whether given key has value associated with it.
@@ -695,7 +739,7 @@ class Trie(_abc.MutableMapping):
         if not only_if_missing or node.value is _SENTINEL:
             node.value = value
         if clear_children:
-            node.children.clear()
+            node.clear_children()
         return node.value
 
     def __setitem__(self, key_or_slice, value):
@@ -748,7 +792,7 @@ class Trie(_abc.MutableMapping):
         while i and node.is_empty():
             i -= 1
             parent_step, parent = trace[i]
-            del parent.children[step]
+            parent.del_child(step)
             step, node = parent_step, parent
 
     def _pop_from_node(self, node, trace):
@@ -817,7 +861,7 @@ class Trie(_abc.MutableMapping):
         node = self._root
         trace = [(None, node)]
         while node.value is _SENTINEL:
-            step, node = next(_iteritems(node.children))
+            step, node = next(iter(node.iter_children()))
             trace.append((step, node))
         return (self._key_from_path((step for step, _ in trace[1:])),
                 self._pop_from_node(node, trace))
@@ -859,7 +903,7 @@ class Trie(_abc.MutableMapping):
         key, is_slice = self._slice_maybe(key_or_slice)
         node, trace = self._get_node(key)
         if is_slice:
-            node.children.clear()
+            node.clear_children()
         elif node.value is _SENTINEL:
             raise ShortKeyError(key)
         node.value = _SENTINEL
@@ -924,7 +968,7 @@ class Trie(_abc.MutableMapping):
         @property
         def has_subtrie(self):
             """Returns whether the node has any children."""
-            return bool(self._node.children)
+            return self._node.has_children()
 
         def get(self, default=None):
             """Returns node's value or the default if value is not assigned."""
@@ -991,9 +1035,7 @@ class Trie(_abc.MutableMapping):
             yield self._Step(self, path, pos, node)
             if pos == len(path):
                 break
-            node = node.children.get(path[pos])
-            if node is None:
-                raise KeyError(key)
+            node = node.req_child(path[pos], key)
             pos += 1
 
     def prefixes(self, key):
