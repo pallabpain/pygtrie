@@ -155,7 +155,8 @@ class _Node(object):
 
         return node_factory(*args)
 
-    def __eq__(self, other):
+    def equals(self, other):
+        """Returns whether this and other node are recursively equal."""
         # Like iterate, we don't recurse so this works on deep tries.
         a, b = self, other
         stack = []
@@ -176,9 +177,6 @@ class _Node(object):
                     return True
                 except KeyError:
                     return False
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def is_empty(self):
         """Returns whether node has a value or children."""
@@ -1115,10 +1113,11 @@ class Trie(_abc.MutableMapping):
         return ret
 
     def __eq__(self, other):
-        return self._root == other._root  # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        return self is other or self._root.equals(other._root)
 
     def __ne__(self, other):
-        return self._root != other._root  # pylint: disable=protected-access
+        return not self == other
 
     def __str__(self):
         return 'Trie(%s)' % ', '.join(
