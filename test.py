@@ -175,8 +175,8 @@ class TrieTestCase(unittest.TestCase):
             self.assertNodeState(t, key)
         self.assertNodeState(t, self._SHORT_KEY, value=value)
 
-        self.assertRegex(str(t), r'Trie\([^:]*: [^:]*\)')
-        self.assertRegex(repr(t), r'Trie\(\(\(.*, .*\),\)\)')
+        # self.assertRegex(str(t), r'Trie\([^:]*: [^:]*\)')
+        # self.assertRegex(repr(t), r'Trie\(\(\(.*, .*\),\)\)')
 
     def assertEmptyTrie(self, t):
         """Asserts a trie is empty."""
@@ -189,8 +189,8 @@ class TrieTestCase(unittest.TestCase):
 
         self.assertRaises(KeyError, t.popitem)
 
-        self.assertEqual('Trie()', str(t))
-        self.assertEqual('Trie()', repr(t))
+        # self.assertEqual('Trie()', str(t))
+        # self.assertEqual('Trie()', repr(t))
 
     def _do_test_basics(self, trie_factory):
         """Basic trie tests."""
@@ -519,6 +519,12 @@ class TrieTestCase(unittest.TestCase):
                                  separator=x._separator)
         self.assertEqual(x, y)
 
+    def _assertToString(self, t, s, r):
+        tp = type(t).__name__
+        t.enable_sorting(True)
+        self.assertEqual(tp + s, str(t))
+        self.assertEqual(tp + r, repr(t))
+
     _PICKLED_PROTO_0 = (
         'Y2NvcHlfcmVnCl9yZWNvbnN0cnVjdG9yCnAwCihjcHlndHJpZQpUcmllCnAxCmNfX2J1aW'
         'x0aW5fXwpvYmplY3QKcDIKTnRwMwpScDQKKGRwNQpWX3Jvb3QKcDYKZzAKKGNweWd0cmll'
@@ -582,6 +588,14 @@ class CharTrieTestCase(TrieTestCase):
     @classmethod
     def key_from_path(cls, path):
         return ''.join(path)
+
+    def test_to_string(self):
+        self._assertToString(self._TRIE_CTOR(), '()', '([])')
+        self._assertToString(self._TRIE_CTOR({self._SHORT_KEY: 42}),
+                             '(foo: 42)', "([('foo', 42)])")
+        self._assertToString(
+            self._TRIE_CTOR({self._SHORT_KEY: 42, self._OTHER_KEY: '42'}),
+            '(foo: 42, qux: 42)', "([('foo', 42), ('qux', '42')])")
 
     def test_prefix_set_pickling_proto0(self):
         pickled = (
@@ -660,6 +674,22 @@ class StringTrieTestCase(TrieTestCase):
     def test_invalid_separator(self):
         self.assertRaises(TypeError, pygtrie.StringTrie, separator=42)
         self.assertRaises(ValueError, pygtrie.StringTrie, separator='')
+
+    def test_to_string(self):
+        self._assertToString(pygtrie.StringTrie(),
+                             '(separator=/)',
+                             "([], separator='/')")
+        self._assertToString(self._TRIE_CTOR(),
+                             '(separator=~)',
+                             "([], separator='~')")
+        self._assertToString(
+            self._TRIE_CTOR({self._SHORT_KEY: 42}),
+            '(~home~foo: 42, separator=~)',
+            "([('~home~foo', 42)], separator='~')")
+        self._assertToString(
+            self._TRIE_CTOR({self._SHORT_KEY: 42, self._OTHER_KEY: '42'}),
+            '(~hom: 42, ~home~foo: 42, separator=~)',
+            "([('~hom', '42'), ('~home~foo', 42)], separator='~')")
 
 
 class SortTest(unittest.TestCase):

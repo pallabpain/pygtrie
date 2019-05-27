@@ -1161,15 +1161,14 @@ class Trie(_abc.MutableMapping):
     def __ne__(self, other):
         return not self == other
 
+    def _str_items(self, fmt='%s: %s'):
+        return ', '.join(fmt % item for item in self.iteritems())
+
     def __str__(self):
-        return 'Trie(%s)' % ', '.join(
-            '%s: %s' % item for item in self.iteritems())
+        return '%s(%s)' % (type(self).__name__, self._str_items())
 
     def __repr__(self):
-        if self:
-            return  'Trie((%s,))' % ', '.join(
-                '(%r, %r)' % item for item in self.iteritems())
-        return 'Trie()'
+        return '%s([%s])' % (type(self).__name__, self._str_items('(%r, %r)'))
 
     def __path_from_key(self, key):
         """Converts a user visible key object to internal path representation.
@@ -1450,6 +1449,16 @@ class StringTrie(Trie):
 
     def copy(self):
         return self.__class__(self, separator=self._separator)
+
+    def __str__(self):
+        if not self:
+            return '%s(separator=%s)' % (type(self).__name__, self._separator)
+        return '%s(%s, separator=%s)' % (
+            type(self).__name__, self._str_items(), self._separator)
+
+    def __repr__(self):
+        return '%s([%s], separator=%r)' % (
+            type(self).__name__, self._str_items('(%r, %r)'), self._separator)
 
     def _path_from_key(self, key):
         return key.split(self._separator)
