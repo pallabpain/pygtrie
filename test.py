@@ -77,8 +77,9 @@ class TrieTestCase(unittest.TestCase):
     _LONG_KEY = _SHORT_KEY + 'bar'
     # A key that is not set but _LONG_KEY is it's prefix
     _VERY_LONG_KEY = _LONG_KEY + 'baz'
-    # A key that is not set and has no relation to other keys
+    # Two more keys which are not set and have no relation to other keys.
     _OTHER_KEY = 'qux'
+    _OTHER_KEY2 = 'zzz'
     # A list of prefixes of _SHORT_KEY
     _SHORT_PREFIXES = ('', 'f', 'fo')
     # A list of prefixes of _LONG_KEY which are not prefixes of _SHORT_KEY nor
@@ -192,11 +193,7 @@ class TrieTestCase(unittest.TestCase):
         # self.assertEqual('Trie()', str(t))
         # self.assertEqual('Trie()', repr(t))
 
-    def _do_test_basics(self, trie_factory):
-        """Basic trie tests."""
-        d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CTOR, d)
-
+    def _assertBasics(self, t):
         self.assertFullTrie(t)
 
         self.assertEqual(42, t.pop(self._LONG_KEY))
@@ -220,6 +217,32 @@ class TrieTestCase(unittest.TestCase):
         t[self._LONG_KEY] = '42'
         self.assertRaisesRegex(pygtrie.ShortKeyError, str(self._SHORT_KEY),
                                t.__delitem__, self._SHORT_KEY)
+
+    def _do_test_basics(self, trie_factory):
+        """Basic trie tests."""
+        d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
+        self._assertBasics(trie_factory(self._TRIE_CTOR, d))
+
+    def _do_test_basics_sorted(self, trie_factory):
+        """Basic trie tests with sorting enabled."""
+        d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
+        t = trie_factory(self._TRIE_CTOR, d)
+        t.enable_sorting(True)
+        self._assertBasics(t)
+
+    def _do_test_popitem(self, trie_factory):
+        """Test popitem method"""
+        data = ((self._SHORT_KEY, 'a'),
+                (self._LONG_KEY, 'b'),
+                (self._OTHER_KEY, 'c'),
+                (self._OTHER_KEY2, 'd'))
+
+        t = trie_factory(self._TRIE_CTOR, dict(data))
+        got = {}
+        while t:
+            k, v = t.popitem()
+            got[k] = v
+        self.assertEqual(dict((self.key_from_key(k), v) for k, v in data), got)
 
     def _do_test_invalid_arguments(self, trie_factory):
         """Test various methods check for invalid arguments."""
@@ -409,7 +432,7 @@ class TrieTestCase(unittest.TestCase):
                 self.assertEqual(42, step.setdefault(42))
                 self.assertEqual(42, step.value)
                 # pylint: disable=protected-access
-                step._node.value = pygtrie._SENTINEL
+                step._node.value = pygtrie._EMPTY
 
         def assert_steps(key, raises=False):
             try:
