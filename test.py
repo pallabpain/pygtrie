@@ -19,14 +19,14 @@ import pygtrie
 
 # pylint: disable=missing-docstring,invalid-slice-index
 
-def _update_trie_factory(trie_cls, *args, **kw):
-    t = trie_cls()
+def _update_trie_factory(trie_ctor, *args, **kw):
+    t = trie_ctor()
     t.update(*args, **kw)
     return t
 
 
-def _setter_trie_factory(trie_cls, d):  # pylint: disable=invalid-name
-    t = trie_cls()
+def _setter_trie_factory(trie_ctor, d):  # pylint: disable=invalid-name
+    t = trie_ctor()
     for k, v in d.items():
         t[k] = v
     return t
@@ -34,25 +34,25 @@ def _setter_trie_factory(trie_cls, d):  # pylint: disable=invalid-name
 
 _TRIE_FACTORIES = ((
     'TrieFromNamedArgs',
-    lambda trie_cls, d: trie_cls(**d)
+    lambda trie_ctor, d: trie_ctor(**d)
 ), (
     'TrieFromTuples',
-    lambda trie_cls, d: trie_cls(d.items())
+    lambda trie_ctor, d: trie_ctor(d.items())
 ), (
     'TrieFromDict',
-    lambda trie_cls, d: trie_cls(d)
+    lambda trie_ctor, d: trie_ctor(d)
 ), (
     'TrieFromTrie',
-    lambda trie_cls, d: trie_cls(trie_cls(d))
+    lambda trie_ctor, d: trie_ctor(trie_ctor(d))
 ), (
     'CopyOfTrie',
-    lambda trie_cls, d: trie_cls(d).copy()
+    lambda trie_ctor, d: trie_ctor(d).copy()
 ), (
     'UpdateWithNamedArgs',
-    lambda trie_cls, d: _update_trie_factory(trie_cls, **d)
+    lambda trie_ctor, d: _update_trie_factory(trie_ctor, **d)
 ), (
     'UpdateWithTuples',
-    lambda trie_cls, d: _update_trie_factory(trie_cls, d.items())
+    lambda trie_ctor, d: _update_trie_factory(trie_ctor, d.items())
 ), (
     'UpdateWithDict',
     _update_trie_factory
@@ -66,7 +66,7 @@ class TrieTestCase(unittest.TestCase):
     # The below need to be overwritten by subclasses
 
     # A Trie class being tested
-    _TRIE_CLS = pygtrie.Trie
+    _TRIE_CTOR = pygtrie.Trie
 
     # A key to set
     _SHORT_KEY = 'foo'
@@ -195,7 +195,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_basics(self, trie_factory):
         """Basic trie tests."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         self.assertFullTrie(t)
 
@@ -224,7 +224,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_invalid_arguments(self, trie_factory):
         """Test various methods check for invalid arguments."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         self.assertRaisesRegex(
             ValueError, 'update.. takes at most one positional argument,',
@@ -237,7 +237,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_clear(self, trie_factory):
         """Test clear method."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
         self.assertFullTrie(t)
         t.clear()
         self.assertEmptyTrie(t)
@@ -245,7 +245,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_iterator(self, trie_factory):
         """Trie iterator tests."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         self.assertEqual([42, 42], t.values())
         self.assertEqual([42, 42], list(t.itervalues()))
@@ -264,7 +264,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_subtrie_iterator(self, trie_factory):
         """Subtrie iterator tests."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         long_key = self.key_from_key(self._LONG_KEY)
         prefix = self._LONG_PREFIXES[0]
@@ -284,7 +284,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_shallow_iterator(self, trie_factory):
         """Shallow iterator test."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         self.assertEqual([42], t.values(shallow=True))
         self.assertEqual([42], list(t.itervalues(shallow=True)))
@@ -301,7 +301,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_splice_operations(self, trie_factory):
         """Splice trie operations tests."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         self.assertEqual([42, 42], list(t[self._SHORT_KEY:]))
         self.assertEqual([42], list(t[self._LONG_PREFIXES[0]:]))
@@ -321,7 +321,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_find_one_prefix(self, trie_factory):
         """Shortest and longest prefix finding methods test."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         short_pair = (self.key_from_key(self._SHORT_KEY), 42)
         long_pair = (self.key_from_key(self._LONG_KEY), 42)
@@ -358,7 +358,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_list_prefixes(self, trie_factory):
         """Key prefixes listing method test."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         short_pair = (self.key_from_key(self._SHORT_KEY), 42)
         long_pair = (self.key_from_key(self._LONG_KEY), 42)
@@ -381,7 +381,7 @@ class TrieTestCase(unittest.TestCase):
     def _do_test_walk_towards(self, trie_factory):
         """walk_towards method test."""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         def assert_step(step):
             self.assertTrue(step)
@@ -433,7 +433,7 @@ class TrieTestCase(unittest.TestCase):
         """https://github.com/google/pygtrie/issues/7"""
         d = dict.fromkeys((self._SHORT_KEY, self._LONG_KEY, self._VERY_LONG_KEY,
                            self._OTHER_KEY), 42)
-        t = trie_factory(self._TRIE_CLS, d)
+        t = trie_factory(self._TRIE_CTOR, d)
 
         pickled = pickle.dumps(t)
         u = pickle.loads(pickled)
@@ -442,7 +442,7 @@ class TrieTestCase(unittest.TestCase):
 
     def test_prefix_set(self):
         """PrefixSet test."""
-        ps = pygtrie.PrefixSet(factory=self._TRIE_CLS)
+        ps = pygtrie.PrefixSet(factory=self._TRIE_CTOR)
 
         short_key = self.key_from_key(self._SHORT_KEY)
         long_key = self.key_from_key(self._LONG_KEY)
@@ -493,20 +493,31 @@ class TrieTestCase(unittest.TestCase):
 
     def test_equality(self):
         """Tests equality comparison."""
-        a = self._TRIE_CLS({self._SHORT_KEY: 42})
-        b = self._TRIE_CLS({self._SHORT_KEY: 42})
-        c = self._TRIE_CLS({self._SHORT_KEY: '42'})
-        d = self._TRIE_CLS({self._SHORT_KEY2: 42})
-        e = self._TRIE_CLS()
+        a = self._TRIE_CTOR()
+        b = self._TRIE_CTOR({self._SHORT_KEY: 42})
+        c = self._TRIE_CTOR({self._SHORT_KEY: '42'})
+        d = self._TRIE_CTOR({self._OTHER_KEY: 42})
+        e = self._TRIE_CTOR({self._SHORT_KEY: 42, self._OTHER_KEY: 42})
+        f = self._TRIE_CTOR({self._SHORT_KEY: 42, self._OTHER_KEY.upper(): 42})
 
-        self.assertEqual(a, a)
-        self.assertEqual(a, b)
-        self.assertEqual(e, e)
-        self.assertEqual(e, self._TRIE_CLS())
-        self.assertNotEqual(a, c)
-        self.assertNotEqual(a, d)
-        self.assertNotEqual(a, e)
-        self.assertNotEqual(e, a)
+        tries = (a, b, c, d, e, f)
+        for x in tries:
+            for y in tries:
+                if x is y:
+                    self.assertEqual(x, y)
+                    self.assertEqual(x, y.copy())
+                else:
+                    self.assertNotEqual(x, y)
+
+    def test_fromkeys(self):
+        x = self._TRIE_CTOR({self._SHORT_KEY: 42, self._LONG_KEY: 42})
+        # pylint: disable=no-member,protected-access,unexpected-keyword-arg
+        if hasattr(self._TRIE_CTOR, 'fromkeys'):
+            y = self._TRIE_CTOR.fromkeys((self._SHORT_KEY, self._LONG_KEY), 42)
+        else:
+            y = type(x).fromkeys((self._SHORT_KEY, self._LONG_KEY), 42,
+                                 separator=x._separator)
+        self.assertEqual(x, y)
 
     _PICKLED_PROTO_0 = (
         'Y2NvcHlfcmVnCl9yZWNvbnN0cnVjdG9yCnAwCihjcHlndHJpZQpUcmllCnAxCmNfX2J1aW'
@@ -525,12 +536,12 @@ class TrieTestCase(unittest.TestCase):
         self.assertEqual(want, got)
 
     def test_pickling_proto0(self):
-        want = self._TRIE_CLS.fromkeys(('foo', 'bar', 'baz'), 42)
+        want = self._TRIE_CTOR((key, 42) for key in ('foo', 'bar', 'baz'))
         self.assertUnpickling(want, self._PICKLED_PROTO_0)
 
     @unittest.skipIf(sys.version_info[0] < 3, "Protocol 3 requires Python 3+")
     def test_pickling_proto3(self):
-        want = self._TRIE_CLS.fromkeys(('foo', 'bar', 'baz'), 42)
+        want = self._TRIE_CTOR((key, 42) for key in ('foo', 'bar', 'baz'))
         self.assertUnpickling(want, self._PICKLED_PROTO_3)
 
 
@@ -553,7 +564,7 @@ _construct_trie_test_cases()
 
 
 class CharTrieTestCase(TrieTestCase):
-    _TRIE_CLS = pygtrie.CharTrie
+    _TRIE_CTOR = pygtrie.CharTrie
 
     _PICKLED_PROTO_0 = (
         'Y2NvcHlfcmVnCl9yZWNvbnN0cnVjdG9yCnAwCihjcHlndHJpZQpDaGFyVHJpZQpwMQpjX1'
@@ -598,21 +609,23 @@ class CharTrieTestCase(TrieTestCase):
         self.assertUnpickling(want, pickled)
 
     def test_step_repr(self):
-        t = self._TRIE_CLS({'foo': 42, 'foobar': 64})
+        t = self._TRIE_CTOR({'foo': 42, 'foobar': 64})
         self.assertEqual("('foo': 42)", repr(t.shortest_prefix('foobarbaz')))
         self.assertEqual("('foobar': 64)", repr(t.longest_prefix('foobarbaz')))
         self.assertEqual("(None Step)", repr(t.longest_prefix('qux')))
 
-class StringTrieTestCase(TrieTestCase):
-    _TRIE_CLS = pygtrie.StringTrie
 
-    _SHORT_KEY = '/home/foo'
-    _SHORT_KEY2 = '/home/FOO'
-    _LONG_KEY = _SHORT_KEY + '/bar/baz'
-    _VERY_LONG_KEY = _LONG_KEY + '/qux'
-    _OTHER_KEY = '/hom'
-    _SHORT_PREFIXES = ('', '/home')
-    _LONG_PREFIXES = ('/home/foo/bar',)
+class StringTrieTestCase(TrieTestCase):
+    _TRIE_CTOR = staticmethod(
+        lambda *args, **kw: pygtrie.StringTrie(*args, separator='~', **kw))  # pylint: disable=unnecessary-lambda
+
+    _SHORT_KEY = '~home~foo'
+    _SHORT_KEY2 = '~home~FOO'
+    _LONG_KEY = _SHORT_KEY + '~bar~baz'
+    _VERY_LONG_KEY = _LONG_KEY + '~qux'
+    _OTHER_KEY = '~hom'
+    _SHORT_PREFIXES = ('', '~home')
+    _LONG_PREFIXES = ('~home~foo~bar',)
 
     _PICKLED_PROTO_0 = (
         'Y2NvcHlfcmVnCl9yZWNvbnN0cnVjdG9yCnAwCihjcHlndHJpZQpTdHJpbmdUcmllCnAxCm'
@@ -629,11 +642,11 @@ class StringTrieTestCase(TrieTestCase):
 
     @classmethod
     def path_from_key(cls, key):
-        return key.split('/')
+        return key.split('~')
 
     @classmethod
     def key_from_path(cls, path):
-        return '/'.join(path)
+        return '~'.join(path)
 
     def test_valid_separator(self):
         t = pygtrie.StringTrie()
@@ -652,10 +665,10 @@ class StringTrieTestCase(TrieTestCase):
 class SortTest(unittest.TestCase):
 
     def test_enable_sorting(self):
-        keys = sorted(chr(x) for x in range(32, 128) if x != ord('/'))
+        keys = sorted(chr(x) for x in range(32, 128))
         # In Python 3 keys are returned in insertion order so we reverse the
         # insertion here.
-        t = pygtrie.StringTrie.fromkeys(reversed(keys))
+        t = pygtrie.CharTrie.fromkeys(reversed(keys))
 
         # Unless dict's hash function is weird, trie's keys should not be
         # returned in order.

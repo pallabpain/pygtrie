@@ -1448,6 +1448,9 @@ class StringTrie(Trie):
             trie[key] = value
         return trie
 
+    def copy(self):
+        return self.__class__(self, separator=self._separator)
+
     def _path_from_key(self, key):
         return key.split(self._separator)
 
@@ -1468,7 +1471,7 @@ class PrefixSet(_abc.MutableSet):
     behaviour for element deletion.
     """
 
-    def __init__(self, iterable=None, factory=Trie, **kwargs):
+    def __init__(self, iterable=(), factory=Trie, **kwargs):
         """Initialises the prefix set.
 
         Args:
@@ -1478,13 +1481,15 @@ class PrefixSet(_abc.MutableSet):
             kwargs: Additional keyword arguments passed to the factory function.
         """
         trie = factory(**kwargs)
-        if iterable:
-            trie.update((key, True) for key in iterable)
+        for key in iterable:
+            trie[key:] = True
         self._trie = trie
 
     def copy(self):
         """Returns a copy of the prefix set."""
-        return self.__class__(self._trie, factory=self._trie.__class__)
+        cpy = super(PrefixSet, self).__new__(type(self))
+        cpy._trie = self._trie.copy()  # pylint: disable=protected-access
+        return cpy
 
     def clear(self):
         """Removes all keys from the set."""
