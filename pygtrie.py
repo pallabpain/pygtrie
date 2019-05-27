@@ -86,17 +86,17 @@ class _Node(object):
         self._children = None
         self.value = _SENTINEL
 
-    def req_child(self, step, exc_arg, create=False):
-        """Returns child under given step or raises; optionally creates it."""
-        node = self._children and self._children.get(step)
-        if node is not None:
-            return node
-        elif create:
+    def get_child(self, step):
+        """Returns child under given step or None."""
+        return self._children and self._children.get(step)
+
+    def req_child(self, step):
+        """Returns child under given step; creates it if necessary."""
+        if not self._children:
             node = _Node()
-            self.set_child(step, node)
+            self._children = {step: node}
             return node
-        else:
-            raise KeyError(exc_arg)
+        return self._children.setdefault(step, _Node())
 
     def set_child(self, step, node):
         """Sets child under given step to given node."""
@@ -425,12 +425,11 @@ class Trie(_abc.MutableMapping):
             trie[key] = value
         return trie
 
-    def _get_node(self, key, create=False):
+    def _get_node(self, key):
         """Returns node for given key.  Creates it if requested.
 
         Args:
             key: A key to look for.
-            create: Whether to create the node if it does not exist.
 
         Returns:
             ``(node, trace)`` tuple where ``node`` is the node for given key and
@@ -441,15 +440,35 @@ class Trie(_abc.MutableMapping):
             always ``(None, self._root)``.
 
         Raises:
-            KeyError: If there is no node for the key and ``create`` is
-                ``False``.
+            KeyError: If there is no node for the key.
         """
         node = self._root
         trace = [(None, node)]
         for step in self.__path_from_key(key):
-            node = node.req_child(step, key, create=create)
+            node = node.get_child(step)
+            if node is None:
+                raise KeyError(key)
             trace.append((step, node))
         return node, trace
+
+    def _set_node(self, key, value, only_if_missing=False):
+        """Sets value for a given key.
+
+        Args:
+            key: Key to set value of.
+            value: Value to set to.
+            only_if_missing: If true, value won't be changed if the key is
+                    already associated with a value.
+
+        Returns:
+            The node.
+        """
+        node = self._root
+        for step in self.__path_from_key(key):
+            node = node.req_child(step)
+        if node.value is _SENTINEL or not only_if_missing:
+            node.value = value
+        return node
 
     def __iter__(self):
         return self.iterkeys()
@@ -721,27 +740,6 @@ class Trie(_abc.MutableMapping):
             raise ShortKeyError(key_or_slice)
         return node.value
 
-    def _set(self, key, value, only_if_missing=False, clear_children=False):
-        """Sets value for a given key.
-
-        Args:
-            key: Key to set value of.
-            value: Value to set to.
-            only_if_missing: If ``True``, value won't be changed if the key is
-                    already associated with a value.
-            clear_children: If ``True``, all children of the node, if any, will
-                    be removed.
-
-        Returns:
-            Value of the node.
-        """
-        node, _ = self._get_node(key, create=True)
-        if not only_if_missing or node.value is _SENTINEL:
-            node.value = value
-        if clear_children:
-            node.clear_children()
-        return node.value
-
     def __setitem__(self, key_or_slice, value):
         """Sets value associated with given key.
 
@@ -769,7 +767,9 @@ class Trie(_abc.MutableMapping):
             TypeError: If key is a slice whose stop or step are not None.
         """
         key, is_slice = self._slice_maybe(key_or_slice)
-        self._set(key, value, clear_children=is_slice)
+        node = self._set_node(key, value)
+        if is_slice:
+            node.clear_children()
 
     def setdefault(self, key, value=None):
         """Sets value of a given node if not set already.  Also returns it.
@@ -777,7 +777,7 @@ class Trie(_abc.MutableMapping):
         In contrast to :func:`Trie.__setitem__`, this method does not accept
         slice as a key.
         """
-        return self._set(key, value, only_if_missing=True)
+        return self._set_node(key, value, only_if_missing=True).value
 
     @staticmethod
     def _cleanup_trace(trace):
@@ -1035,7 +1035,9 @@ class Trie(_abc.MutableMapping):
             yield self._Step(self, path, pos, node)
             if pos == len(path):
                 break
-            node = node.req_child(path[pos], key)
+            node = node.get_child(path[pos])
+            if node is None:
+                raise KeyError(key)
             pos += 1
 
     def prefixes(self, key):
