@@ -716,12 +716,14 @@ class StringTrieTestCase(TrieTestCase):
 
 
 class SortTest(unittest.TestCase):
+    _CHAR_TRIE_KEYS = sorted(chr(x) for x in range(32, 127))
+    _STR_TRIE_KEYS = ['/' + x for x in _CHAR_TRIE_KEYS if x != '/']
 
-    def test_enable_sorting(self):
-        keys = sorted(chr(x) for x in range(32, 128))
+    def _do_test_enable_sorting(self, cls, keys):
+        keys = sorted(keys)
         # In Python 3 keys are returned in insertion order so we reverse the
         # insertion here.
-        t = pygtrie.CharTrie.fromkeys(reversed(keys))
+        t = cls.fromkeys(reversed(keys))
 
         # Unless dict's hash function is weird, trie's keys should not be
         # returned in order.
@@ -733,6 +735,29 @@ class SortTest(unittest.TestCase):
 
         t.enable_sorting(False)
         self.assertNotEqual(keys, t.keys())
+
+    def test_CharTrie_enable_sorting(self):
+        self._do_test_enable_sorting(pygtrie.CharTrie, self._CHAR_TRIE_KEYS)
+
+    def test_StringTrie_enable_sorting(self):
+        self.maxDiff = None
+        self._do_test_enable_sorting(pygtrie.StringTrie, self._STR_TRIE_KEYS)
+
+    def _do_test_copy_preserve_sorting(self, cls, keys):
+        t = cls()
+        t.enable_sorting()
+        t = t.copy()
+        for k in reversed(keys):
+            t[k] = k
+        self.assertEqual(keys, t.keys())
+
+    def test_CharTrie_copy_preserves_sorting(self):
+        self._do_test_copy_preserve_sorting(pygtrie.CharTrie,
+                                            self._CHAR_TRIE_KEYS)
+
+    def test_StringTrie_copy_preserves_sorting(self):
+        self._do_test_copy_preserve_sorting(pygtrie.StringTrie,
+                                            self._STR_TRIE_KEYS)
 
 
 class TraverseTest(unittest.TestCase):

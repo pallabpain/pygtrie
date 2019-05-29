@@ -443,7 +443,9 @@ class Trie(_abc.MutableMapping):
 
     def copy(self):
         """Returns a shallow copy of the trie."""
-        return self.__class__(self)
+        cpy = self.__class__(self)
+        cpy._sorted = self._sorted  # pylint: disable=protected-access
+        return cpy
 
     @classmethod
     def fromkeys(cls, keys, value=None):
@@ -1490,7 +1492,9 @@ class StringTrie(Trie):
         return trie
 
     def copy(self):
-        return self.__class__(self, separator=self._separator)
+        cpy = self.__class__(self, separator=self._separator)
+        cpy._sorted = self._sorted  # pylint: disable=protected-access
+        return cpy
 
     def __str__(self):
         if not self:
