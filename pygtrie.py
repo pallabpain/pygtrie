@@ -51,13 +51,18 @@ except ImportError:  # Python 2 compatibility
 
 
 class ShortKeyError(KeyError):
-    """Raised when given key is a prefix of a longer key."""
+    """Raised when given key is a prefix of an existing longer key
+    but does not have a value associated with itself."""
 
 
 class _NoChildren(object):
     """Collection representing lack of any children.
 
-    Don’t create objects of this type instead use _EMPTY singleton.
+    Also acts as an empty iterable and an empty iterator.  This isn’t the
+    cleanest designs but it makes various things more concise and avoids object
+    allocations in a few places.
+
+    Don’t create objects of this type directly; instead use _EMPTY singleton.
     """
     __slots__ = ()
 
@@ -992,7 +997,7 @@ class Trie(_abc.MutableMapping):
 
             Raises:
                 IndexError: if index is not 0 or 1.
-                KeyErro: if index is 1 but node has no value assigned.
+                KeyError: if index is 1 but node has no value assigned.
             """
             if index == 0:
                 return self.key
