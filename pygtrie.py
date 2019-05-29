@@ -49,11 +49,6 @@ try:
 except ImportError:  # Python 2 compatibility
     import collections as _abc
 
-try:
-    _basestring = basestring  # pylint: disable=invalid-name
-except NameError:  # Python 2 compatibility
-    _basestring = str  # pylint: disable=invalid-name
-
 
 class ShortKeyError(KeyError):
     """Raised when given key is a prefix of a longer key."""
@@ -1477,7 +1472,7 @@ class StringTrie(Trie):
             ValueError: If ``separator`` is empty.
         """
         separator = kwargs.pop('separator', '/')
-        if not isinstance(separator, _basestring):
+        if not isinstance(separator, getattr(__builtins__, 'basestring', str)):
             raise TypeError('separator must be a string')
         if not separator:
             raise ValueError('separator can not be empty')
