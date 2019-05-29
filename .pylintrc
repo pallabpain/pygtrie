@@ -47,12 +47,13 @@ disable=attribute-defined-outside-init,
         missing-return-type-doc,
         missing-type-doc,
         missing-yield-type-doc,
+        no-else-return,
+        no-self-use,
         star-args,
-        too-many-public-methods,
-        too-many-lines,
         too-few-public-methods,
         too-many-ancestors,
-        no-else-return,
+        too-many-lines,
+        too-many-public-methods,
         useless-object-inheritance
 
 

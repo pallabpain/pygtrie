@@ -61,17 +61,22 @@ class _NoChildren(object):
     """
     __slots__ = ()
 
-    __bool__ = __nonzero__ = staticmethod(lambda: False)
-    __len__ = staticmethod(lambda: 0)
-    __iter__ = iteritems = lambda self: self
-    def __next__(self):  # pylint: disable=no-self-use
+    def __bool__(self):
+        return False
+    __nonzero__ = __bool__
+    def __len__(self):
+        return 0
+    def __iter__(self):
+        return self
+    iteritems = __iter__
+    def __next__(self):
         raise StopIteration()
     next = __next__
 
-    def get(self, _step):  # pylint: disable=no-self-use
+    def get(self, _step):
         return None
 
-    def add(self, parent, step):  # pylint: disable=no-self-use
+    def add(self, parent, step):
         node = _Node()
         parent.children = _OneChild(step, node)
         return node
@@ -94,10 +99,17 @@ class _OneChild(object):
         self.step = step
         self.node = node
 
-    __bool__ = __nonzero__ = staticmethod(lambda: True)
-    __len__ = staticmethod(lambda: 1)
-    sorted_items = lambda self: [(self.step, self.node)]
-    iteritems = lambda self: iter(((self.step, self.node),))
+    def __bool__(self):
+        return True
+    __nonzero__ = __bool__
+    def __len__(self):
+        return 1
+
+    def sorted_items(self):
+        return [(self.step, self.node)]
+
+    def iteritems(self):
+        return iter(((self.step, self.node),))
 
     def get(self, step):
         return self.node if step == self.step else None
@@ -110,7 +122,7 @@ class _OneChild(object):
     def require(self, parent, step):
         return self.node if self.step == step else self.add(parent, step)
 
-    def delete(self, parent, _step):  # pylint: disable=no-self-use
+    def delete(self, parent, _step):
         parent.children = _EMPTY
 
     def pick_child(self):
@@ -124,8 +136,6 @@ class _Children(dict):
 
     def __init__(self, *items):
         super(_Children, self).__init__(items)
-
-    __bool__ = __nonzero__ = staticmethod(lambda: True)
 
     if hasattr(dict, 'iteritems'):  # Python 2 compatibility
         def sorted_items(self):
@@ -245,6 +255,8 @@ class _Node(object):
             if a.value != b.value or len(a.children) != len(b.children):
                 return False
             elif len(a.children) == 1:
+                # We know a.children and b.children are both _OneChild objects
+                # but pylint doesn’t recognise that: pylint: disable=no-member
                 if a.children.step != b.children.step:
                     return False
                 a = a.children.node
@@ -482,6 +494,8 @@ class Trie(_abc.MutableMapping):
         node = self._root
         trace = [(None, node)]
         for step in self.__path_from_key(key):
+            # pylint thinks node.children is always _NoChildren and thus that
+            # we’re assigning None here; pylint: disable=assignment-from-none
             node = node.children.get(step)
             if node is None:
                 raise KeyError(key)
@@ -898,7 +912,9 @@ class Trie(_abc.MutableMapping):
         node = self._root
         trace = [(None, node)]
         while node.value is _EMPTY:
-            step, node = node.children.pick_child()
+            # pylint thinks node.children is always _NoChildren which is missing
+            # pick_child but we know it must be _OneChild or _Children object:
+            step, node = node.children.pick_child()  # pylint: disable=no-member
             trace.append((step, node))
         return (self._key_from_path((step for step, _ in trace[1:])),
                 self._pop_from_node(node, trace))
@@ -951,10 +967,14 @@ class Trie(_abc.MutableMapping):
 
         __slots__ = ()
 
-        __bool__ = __nonzero__ = lambda self: False
-        is_set = has_subtrie = property(lambda self: False)
-        get = lambda self, default=None: default
+        def __bool__(self):
+            return False
+        __nonzero__ = __bool__
 
+        def get(self, default=None):
+            return default
+
+        is_set = has_subtrie = property(__bool__)
         key = value = property(lambda self: None)
 
         def __getitem__(self, index):
@@ -995,7 +1015,9 @@ class Trie(_abc.MutableMapping):
             self._pos = pos
             self._node = node
 
-        __bool__ = __nonzero__ = lambda self: True
+        def __bool__(self):
+            return True
+        __nonzero__ = __bool__
 
         @property
         def is_set(self):
@@ -1072,6 +1094,8 @@ class Trie(_abc.MutableMapping):
             yield self._Step(self, path, pos, node)
             if pos == len(path):
                 break
+            # pylint thinks node.children is always _NoChildren and thus that
+            # we’re assigning None here; pylint: disable=assignment-from-none
             node = node.children.get(path[pos])
             if node is None:
                 raise KeyError(key)
@@ -1224,7 +1248,7 @@ class Trie(_abc.MutableMapping):
         """
         return () if key is _EMPTY else self._path_from_key(key)
 
-    def _path_from_key(self, key):  # pylint: disable=no-self-use
+    def _path_from_key(self, key):
         """Converts a user visible key object to internal path representation.
 
         The default implementation simply returns key.
@@ -1240,7 +1264,7 @@ class Trie(_abc.MutableMapping):
         """
         return key
 
-    def _key_from_path(self, path):  # pylint: disable=no-self-use
+    def _key_from_path(self, path):
         """Converts an internal path into a user visible key object.
 
         The default implementation creates a tuple from the path.
