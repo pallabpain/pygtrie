@@ -526,6 +526,25 @@ class Trie(_abc.MutableMapping):
             node.value = value
         return node
 
+    def _set_node_if_no_prefix(self, key):
+        """Sets given key to True but only if none of its prefixes are present.
+
+        If value is set, removes all ancestors of the node.
+
+        This is a method for exclusive use by PrefixSet.
+
+        Args:
+            key: Key to set value of.
+        """
+        steps = iter(self.__path_from_key(key))
+        node = self._root
+        try:
+            while node.value is _EMPTY:
+                node = node.children.require(node, next(steps))
+        except StopIteration:
+            node.value = True
+            node.children = _EMPTY
+
     def __iter__(self):
         return self.iterkeys()
 
@@ -1652,8 +1671,8 @@ class PrefixSet(_abc.MutableSet):
         Args:
             value: Value to add.
         """
-        if value not in self:
-            self._trie[value:] = True
+        # We're friends with Trie;  pylint: disable=protected-access
+        self._trie._set_node_if_no_prefix(value)
 
     def discard(self, value):
         """Raises NotImplementedError."""
