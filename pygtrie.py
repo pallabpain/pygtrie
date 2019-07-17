@@ -1559,10 +1559,10 @@ class PrefixSet(_abc.MutableSet):
                     :class:`pygtrie.PrefixSet`.
             kwargs: Additional keyword arguments passed to the factory function.
         """
-        trie = factory(**kwargs)
+        super(PrefixSet, self).__init__()
+        self._trie = factory(**kwargs)
         for key in iterable:
-            trie[key:] = True
-        self._trie = trie
+            self.add(key)
 
     def copy(self):
         """Returns a copy of the prefix set."""

@@ -514,6 +514,19 @@ class TrieTestCase(unittest.TestCase):
         self.assertEqual(0, len(ps))
         self.assertEqual([], list(ps))
 
+    def test_prefix_set_init_prunes_branch(self):
+        """Tests long keys are removed during PrefixSet construction."""
+        # https://github.com/google/pygtrie/issues/29
+
+        def check(iterable):
+            ps = pygtrie.PrefixSet(iterable, factory=self._TRIE_CTOR)
+            self.assertEqual(1, len(ps))
+            self.assertEqual([self.key_from_key(self._SHORT_KEY)], list(ps))
+
+        check([self._SHORT_KEY])
+        check([self._SHORT_KEY, self._LONG_KEY])
+        check([self._LONG_KEY, self._SHORT_KEY])
+
     def test_equality(self):
         """Tests equality comparison."""
         a = self._TRIE_CTOR()
