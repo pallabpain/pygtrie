@@ -1,6 +1,33 @@
 Version History
 ---------------
 
+2.3.1: 2019/07/15
+
+- Fix to :class:`pygtrie.PrefixSet` initialisation incorrectly storing
+  elements even if their prefixes are also added to the set.
+
+  For example, ``PrefixSet(('foo', 'foobar'))`` incorrectly resulted
+  in a two-element set even though the interface dictates that only
+  ``foo`` is kept (recall that if ``foo`` is member of the set,
+  ``foobar`` is as well).  [Thanks to Tal Maimon for reporting]
+
+- Fix to :func:`pygtrie.Trie.copy` method not preserving
+  enable-sorting flag and, in case of :class:`pygtrie.StringTrie`,
+  ``separator`` property.  Related to this, add support for the
+  ``copy`` module so :func:`copy.copy` can now be used with the
+  objects.
+
+- Leafs and nodes with just one child use more mummery-optimised
+  representation which reduces overall memory usage of a trie
+  structure.
+
+- Minor performance improvement for adding new elements to
+  a :class:`pygtrie.PrefixSet`.
+
+- Improvements to string representation of objects which now include
+  type and, for :class:`pygtrie.StringTrie` object, value of separator
+  property.
+
 2.3: 2018/08/10
 
 - New ``walk_towards`` method allows walking a path towards given
