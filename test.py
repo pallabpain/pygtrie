@@ -947,27 +947,6 @@ class RecursionTest(unittest.TestCase):
     https://github.com/google/pygtrie/issues/8
     """
 
-    @staticmethod
-    def create_trie():
-        tostring = (getattr(array.array, 'tobytes', None) or # Python 3
-                    getattr(array.array, 'tostring'))  # Python 3
-
-        trie = pygtrie.Trie()
-        for x in range(100):
-            y = tostring(array.array('h', range(x, 1000)))
-            trie.update([(y, x)])
-        return trie
-
-    def test_iterator(self):
-        for _ in self.create_trie().iteritems():
-            pass
-
-    def test_copy(self):
-        copy.copy(self.create_trie())
-
-    def test_deepcopy(self):
-        copy.deepcopy(self.create_trie())
-
     # This code is taken from traverse docstring
     @classmethod
     def _undirected_graph_from_trie(cls, trie):
@@ -1022,10 +1001,31 @@ class RecursionTest(unittest.TestCase):
                           ('foo/qux', 'foo/qux/baz'),
                           ('foo/qux/baz', 'foo/qux')], got)
 
-    def test_traverse_large(self):
-        """Test code that is shown in traverse's docstring; stress test."""
-        nodes = self._undirected_graph_from_trie(self.create_trie())
-        self.assertEqual((100 * 1000 - (100 * 99) / 2) * 2 + 1, len(nodes))
+    def test_large_trie(self):
+        """Test handling of large tries which would overflow stack."""
+        tostring = (getattr(array.array, 'tobytes', None) or # Python 3
+                    getattr(array.array, 'tostring'))  # Python 3
+
+        trie = pygtrie.Trie()
+        for x in range(100):
+            y = tostring(array.array('h', range(x, 1000)))
+            trie[y] = x
+
+        # Plain iteration
+        n = 0
+        for _ in trie.iteritems():
+            n += 1
+        self.assertEqual(100, n)
+
+        # Copy
+        self.assertEqual(trie, copy.copy(trie))
+        self.assertEqual(trie, copy.deepcopy(trie))
+
+        # This takes more time to run than the rest of the unit tests so disable
+        # this.  We're already testing _undirected_graph_from_trie so additional
+        # testing should not be necessary.
+        #nodes = self._undirected_graph_from_trie(trie)
+        #self.assertEqual((100 * 1000 - (100 * 99) / 2) * 2 + 1, len(nodes))
 
 
 if __name__ == '__main__':
