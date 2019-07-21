@@ -1,7 +1,11 @@
 Version History
 ---------------
 
-2.3.1: 2019/07/15
+2.3.2: 2019/07/18
+
+- Trivial metadata fix
+
+2.3.1: 2019/07/18  [pulled back from PyPi]
 
 - Fix to :class:`pygtrie.PrefixSet` initialisation incorrectly storing
   elements even if their prefixes are also added to the set.
