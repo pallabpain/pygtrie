@@ -189,9 +189,11 @@ class _Node(object):
                 returning value of this node and as a prefix for children.
             shallow: Perform a shallow traversal, i.e. do not yield nodes if
                 their prefix has been yielded.
-            iteritems: A function taking dictionary as argument and returning
-                an iterable over its items.  Something other than dict.iteritems
-                may be given to enable sorting.
+            iteritems: A callable taking ``node.children`` as sole argument and
+                returning an iterable of children as ``(step, node)`` pair.  The
+                callable would typically call ``iteritems`` or ``sorted_items``
+                method on the argument depending on whether sorted output is
+                desired.
 
         Yields:
             ``(path, value)`` tuples.
@@ -226,9 +228,11 @@ class _Node(object):
             node_factory: Callable to construct return value.
             path_conv: Callable to convert node path to a key.
             path: Current path for this node.
-            iteritems: A function taking dictionary as argument and returning
-                an iterable over its items.  Something other than dict.iteritems
-                may be given to enable sorting.
+            iteritems: A callable taking ``node.children`` as sole argument and
+                returning an iterable of children as ``(step, node)`` pair.  The
+                callable would typically call ``iteritems`` or ``sorted_items``
+                method on the argument depending on whether sorted output is
+                desired.
 
         Returns:
             An object constructed by calling node_factory(path_conv, path,
@@ -239,10 +243,9 @@ class _Node(object):
         """
         def children():
             """Recursively traverses all of node's children."""
-            if self.children:
-                for step, node in iteritems(self.children):
-                    yield node.traverse(node_factory, path_conv, path + [step],
-                                        iteritems)
+            for step, node in iteritems(self.children):
+                yield node.traverse(node_factory, path_conv, path + [step],
+                                    iteritems)
 
         args = [path_conv, tuple(path), children()]
 
