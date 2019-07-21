@@ -43,6 +43,7 @@ __copyright__ = ('Copyright 2014-2017 Google LLC',
                  'Copyright 2018-2019 Michal Nazarewicz <mina86@mina86.com>')
 
 
+import copy as _copy
 import operator as _operator
 try:
     import collections.abc as _abc
@@ -87,6 +88,12 @@ class _NoChildren(object):
         return node
 
     require = add
+
+    def copy(self, _make_copy, _queue):
+        return self
+
+    def __deepcopy__(self, memo):
+        return self
 
     # sorted_items, delete and pick_child are not implemented on purpose since
     # they should never be called on a node with no children.
@@ -133,6 +140,11 @@ class _OneChild(object):
     def pick_child(self):
         return (self.step, self.node)
 
+    def copy(self, make_copy, queue):
+        cpy = _OneChild(make_copy(self.step), self.node.shallow_copy(make_copy))
+        queue.append((cpy.node,))
+        return cpy
+
 
 class _Children(dict):
     """Children collection representing more than one child."""
@@ -168,6 +180,13 @@ class _Children(dict):
 
     def pick_child(self):
         return next(self.iteritems())
+
+    def copy(self, make_copy, queue):
+        cpy = _Children()
+        cpy.update((make_copy(step), node.shallow_copy(make_copy))
+                   for step, node in self.items())
+        queue.append(cpy.values())
+        return cpy
 
 
 class _Node(object):
@@ -286,6 +305,22 @@ class _Node(object):
                     return False
 
     __bool__ = __nonzero__ = __hash__ = None
+
+    def shallow_copy(self, make_copy):
+        """Returns a copy of the node which shares the children property."""
+        cpy = _Node()
+        cpy.children = self.children
+        cpy.value = make_copy(self.value)
+        return cpy
+
+    def copy(self, make_copy):
+        """Returns a copy of the node structure."""
+        cpy = self.shallow_copy(make_copy)
+        queue = [(cpy,)]
+        while queue:
+            for node in queue.pop():
+                node.children = node.children.copy(make_copy, queue)
+        return cpy
 
     def __getstate__(self):
         """Get state used for pickling.
@@ -433,7 +468,7 @@ class Trie(_abc.MutableMapping):
         Args:
             enable: Whether to enable sorting of child nodes.
         """
-        self._sorted = enable
+        self._sorted = bool(enable)
 
     def clear(self):
         """Removes all the values from the trie."""
@@ -456,11 +491,19 @@ class Trie(_abc.MutableMapping):
             args = ()
         super(Trie, self).update(*args, **kwargs)
 
-    def copy(self):
-        """Returns a shallow copy of the trie."""
-        cpy = self.__class__(self)
-        cpy._sorted = self._sorted  # pylint: disable=protected-access
+    def copy(self, __make_copy=lambda x: x):
+        """Returns a shallow copy of the object."""
+        # pylint: disable=protected-access
+        cpy = self.__class__()
+        cpy.__dict__ = self.__dict__.copy()
+        cpy._root = self._root.copy(__make_copy)
         return cpy
+
+    def __copy__(self):
+        return self.copy()
+
+    def __deepcopy__(self, memo):
+        return self.copy(lambda x: _copy.deepcopy(x, memo))
 
     @classmethod
     def fromkeys(cls, keys, value=None):
@@ -1537,11 +1580,6 @@ class StringTrie(Trie):
             trie[key] = value
         return trie
 
-    def copy(self):
-        cpy = self.__class__(self, separator=self._separator)
-        cpy._sorted = self._sorted  # pylint: disable=protected-access
-        return cpy
-
     def __str__(self):
         if not self:
             return '%s(separator=%s)' % (type(self).__name__, self._separator)
@@ -1587,9 +1625,21 @@ class PrefixSet(_abc.MutableSet):
             self.add(key)
 
     def copy(self):
-        """Returns a copy of the prefix set."""
-        cpy = super(PrefixSet, self).__new__(type(self))
-        cpy._trie = self._trie.copy()  # pylint: disable=protected-access
+        """Returns a shallow copy of the object."""
+        return self.__copy__()
+
+    def __copy__(self):
+        # pylint: disable=protected-access
+        cpy = self.__class__()
+        cpy.__dict__ = self.__dict__.copy()
+        cpy._trie = self._trie.__copy__()
+        return cpy
+
+    def __deepcopy__(self, memo):
+        # pylint: disable=protected-access
+        cpy = self.__class__()
+        cpy.__dict__ = self.__dict__.copy()
+        cpy._trie = self._trie.__deepcopy__(memo)
         return cpy
 
     def clear(self):
