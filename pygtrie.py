@@ -1105,7 +1105,7 @@ class Trie(_abc.MutableMapping):
             return default if v is _EMPTY else v
 
         def set(self, value):
-            """Assigns value to the node."""
+            """Deprecated.  Use ``step.value = value`` instead."""
             self._node.value = value
 
         def setdefault(self, value):
@@ -1132,6 +1132,10 @@ class Trie(_abc.MutableMapping):
             if v is _EMPTY:
                 raise ShortKeyError(self.key)
             return v
+
+        @value.setter
+        def value(self, value):
+            self._node.value = value
 
     _NONE_STEP = _NoneStep()
 

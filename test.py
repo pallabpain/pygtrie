@@ -414,23 +414,25 @@ class TrieTestCase(unittest.TestCase):
             self.assertEqual(step.key != self.key_from_key(self._LONG_KEY),
                              step.has_subtrie)
 
-            if is_set:
-                self.assertEqual(42, step.value)
-                self.assertEqual(42, step[1])
-                self.assertEqual(42, step.get('42'))
-                self.assertEqual(42, step.setdefault('42'))
-                self.assertEqual(42, step.value)
-                step.set('42')
-                self.assertEqual('42', step.value)
-                step.set(42)
-            else:
+            if not is_set:
                 self.assertRaises(KeyError, lambda: step.value)
                 self.assertRaises(KeyError, lambda: step[1])
                 self.assertEqual('42', step.get('42'))
                 self.assertEqual(42, step.setdefault(42))
                 self.assertEqual(42, step.value)
-                # pylint: disable=protected-access
-                step._node.value = pygtrie._EMPTY
+
+            self.assertEqual(42, step.value)
+            self.assertEqual(42, step[1])
+            self.assertEqual(42, step.get('42'))
+            self.assertEqual(42, step.setdefault('42'))
+            self.assertEqual(42, step.value)
+            step.value = 24
+            self.assertEqual(24, step.value)
+            step.set('42')
+            self.assertEqual('42', step.value)
+
+            # pylint: disable=protected-access
+            step.value = 42 if is_set else pygtrie._EMPTY
 
         def assert_steps(key, raises=False):
             try:
