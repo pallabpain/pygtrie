@@ -1,24 +1,47 @@
-from distutils.core import setup
+import codecs
+import distutils.command.sdist
+import distutils.core
 import os
 import re
+import re
+import shutil
+import subprocess
 import sys
-import codecs
+import tempfile
 
 import version
 
-release = version.get_version()
 
-if len(sys.argv) == 2 and sys.argv[1] == 'builddoc':
-    os.execlp('sphinx-build',
-              '-Drelease=' + release,
-              '-Dversion=' + '.'.join(release.split('.', 2)[0:2]),
-              '.', 'html')
+class BuildDocCommand(distutils.core.Command):
+    description = 'build Sphinx documentation'
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        release = self.distribution.get_version()
+        version = '.'.join(release.split('.', 2)[0:2])
+        outdir = tempfile.mkdtemp() if self.dry_run else 'html'
+        try:
+            subprocess.check_call(('sphinx-build', '-Drelease=' + release,
+                                   '-n', '-Dversion=' + version, '.', outdir))
+        finally:
+            if self.dry_run:
+                shutil.rmtree(outdir)
+
+
+release = version.get_version()
 
 with codecs.open('README.rst', 'r', 'utf-8') as f:
     readme = f.read()
 with codecs.open('version-history.rst', 'r', 'utf-8') as f:
     readme += '\n' + f.read()
 readme, _ = re.subn(r':(?:class|func):`([^`]*)`', r'``\1``', readme)
+
 
 kwargs = {
     'name': 'pygtrie',
@@ -44,9 +67,10 @@ kwargs = {
         'Programming Language :: Python :: 3',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
+    'cmdclass': {'build_doc': BuildDocCommand},
 }
 
 if re.search(r'(?:\d+\.)*\d+', release):
     kwargs['download_url'] = kwargs['url'] + '/tarball/v' + release
 
-setup(**kwargs)
+distutils.core.setup(**kwargs)

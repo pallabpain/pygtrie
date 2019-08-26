@@ -20,6 +20,6 @@ coverage: test.py pygtrie.py
 	"$$cov" run $< && "$$cov" report -m
 
 docs:
-	sphinx-build . html
+	python3 setup.py build_doc
 
 .PHONY: all test test2 test3 lint coverage docs
