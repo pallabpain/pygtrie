@@ -105,7 +105,7 @@ _EMPTY = _NoChildren()
 class _OneChild(object):
     """Children collection representing a single child."""
 
-    __solts__ = ('step', 'node')
+    __slots__ = ('step', 'node')
 
     def __init__(self, step, node):
         self.step = step
