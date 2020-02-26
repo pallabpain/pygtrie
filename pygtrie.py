@@ -475,7 +475,7 @@ class Trie(_abc.MutableMapping):
         self._root = _Node()
 
     def update(self, *args, **kwargs):
-        """Updates stored values.  Works like :func:`dict.update`."""
+        """Updates stored values.  Works like :meth:`dict.update`."""
         if len(args) > 1:
             raise ValueError('update() takes at most one positional argument, '
                              '%d given.' % len(args))
@@ -704,7 +704,7 @@ class Trie(_abc.MutableMapping):
         """Returns a list of values in given subtrie.
 
         This is equivalent to constructing a list from generator returned by
-        :func:`Trie.iterivalues` which see for more detailed documentation.
+        :func:`Trie.itervalues` which see for more detailed documentation.
         """
         return list(self.itervalues(prefix=prefix, shallow=shallow))
 

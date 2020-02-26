@@ -45,4 +45,10 @@ PrefixSet class
 .. autoclass:: pygtrie.PrefixSet
    :members:
 
+Custom exceptions
+-----------------
+
+.. autoclass:: pygtrie.ShortKeyError
+   :members:
+
 .. include:: version-history.rst
