@@ -74,7 +74,7 @@ class _NoChildren(object):
         return 0
     def __iter__(self):
         return self
-    iteritems = __iter__
+    iteritems = sorted_items = __iter__
     def __next__(self):
         raise StopIteration()
     next = __next__
@@ -95,7 +95,7 @@ class _NoChildren(object):
     def __deepcopy__(self, memo):
         return self
 
-    # sorted_items, delete and pick_child are not implemented on purpose since
+    # delete and pick_child are not implemented on purpose since
     # they should never be called on a node with no children.
 
 

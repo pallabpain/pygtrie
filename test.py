@@ -6,7 +6,6 @@ __author__ = 'Michal Nazarewicz <mina86@mina86.com>'
 __copyright__ = ('Copyright 2014-2017 Google LLC',
                  'Copyright 2018-2019 Michal Nazarewicz <mina86@mina86.com>')
 
-
 import array
 import base64
 import collections
@@ -17,49 +16,80 @@ import unittest
 
 import pygtrie
 
-
-# pylint: disable=missing-docstring,invalid-slice-index
-
-def _update_trie_factory(trie_ctor, *args, **kw):
-    t = trie_ctor()
-    t.update(*args, **kw)
-    return t
+# pylint: disable=missing-docstring
 
 
-def _setter_trie_factory(trie_ctor, d):  # pylint: disable=invalid-name
-    t = trie_ctor()
-    for k, v in d.items():
-        t[k] = v
-    return t
+class _TrieFactoryParameteriser(object):
+    # pylint: disable=no-self-argument, invalid-name
+
+    def __make_update_trie_factory(update):
+        def factory(trie_ctor, d):
+            t = trie_ctor()
+            update(t, d)
+            return t
+        return factory
+
+    def __setter_trie_factory(trie_ctor, d):
+        t = trie_ctor()
+        for k, v in d.items():
+            t[k] = v
+        return t
+
+    def __sorted_trie_factory(trie_ctor, d):
+        t = trie_ctor(d)
+        t.enable_sorting(True)
+        return t
+
+    _FACTORIES = ((
+        'TrieFromNamedArgs',
+        lambda trie_ctor, d: trie_ctor(**d)
+    ), (
+        'TrieFromTuples',
+        lambda trie_ctor, d: trie_ctor(d.items())
+    ), (
+        'TrieFromDict',
+        lambda trie_ctor, d: trie_ctor(d)
+    ), (
+        'TrieFromTrie',
+        lambda trie_ctor, d: trie_ctor(trie_ctor(d))
+    ), (
+        'UpdateWithNamedArgs',
+        __make_update_trie_factory(lambda t, d: t.update(**d))
+    ), (
+        'UpdateWithTuples',
+        __make_update_trie_factory(lambda t, d: t.update(d.items()))
+    ), (
+        'UpdateWithDict',
+        __make_update_trie_factory(lambda t, d: t.update(d))
+    ), (
+        'Setters',
+        __setter_trie_factory
+    ), (
+        'Sorted',
+        __sorted_trie_factory
+    ))
+
+    def __call__(self, cls):
+        for name in list(cls.__dict__):
+            if name.startswith('_do_test_'):
+                self.__parameterise_method(cls, name)
+        return cls
+
+    def __parameterise_method(self, cls, name):
+        orig = getattr(cls, name)
+        for factory_name, factory in self._FACTORIES:
+            method = self.__make_test_method(orig, factory)
+            if orig.__doc__:
+                method.__doc__ = '%s using %s trie factory.' % (
+                    orig.__doc__[:-2], factory_name)
+            setattr(cls, '%s_%s' % (name[4:], factory_name), method)
+
+    @staticmethod
+    def __make_test_method(method, factory):
+        return lambda self: method(self, trie_factory=factory)
 
 
-_TRIE_FACTORIES = ((
-    'TrieFromNamedArgs',
-    lambda trie_ctor, d: trie_ctor(**d)
-), (
-    'TrieFromTuples',
-    lambda trie_ctor, d: trie_ctor(d.items())
-), (
-    'TrieFromDict',
-    lambda trie_ctor, d: trie_ctor(d)
-), (
-    'TrieFromTrie',
-    lambda trie_ctor, d: trie_ctor(trie_ctor(d))
-), (
-    'UpdateWithNamedArgs',
-    lambda trie_ctor, d: _update_trie_factory(trie_ctor, **d)
-), (
-    'UpdateWithTuples',
-    lambda trie_ctor, d: _update_trie_factory(trie_ctor, d.items())
-), (
-    'UpdateWithDict',
-    _update_trie_factory
-), (
-    'Setters',
-    _setter_trie_factory
-))
-
-
+@_TrieFactoryParameteriser()
 class TrieTestCase(unittest.TestCase):
     # The below need to be overwritten by subclasses
 
@@ -646,24 +676,6 @@ class TrieTestCase(unittest.TestCase):
         self.assertUnpickling(want, self._PICKLED_PROTO_3)
 
 
-def _construct_trie_test_cases():
-
-    def make_test_method(method, factory):
-        return lambda self: method(self, trie_factory=factory)
-
-    for name in list(TrieTestCase.__dict__):
-        if not name.startswith('_do_test_'):
-            continue
-        orig = getattr(TrieTestCase, name)
-        for factory_name, factory in _TRIE_FACTORIES:
-            method = make_test_method(orig, factory)
-            method.__doc__ = '%s using %s trie factory.' % (
-                orig.__doc__[:-2], factory_name)
-            setattr(TrieTestCase, '%s_%s' % (name[4:], factory_name), method)
-
-_construct_trie_test_cases()
-
-
 class CharTrieTestCase(TrieTestCase):
     _TRIE_CTOR = pygtrie.CharTrie
 
@@ -833,6 +845,7 @@ class SortTest(unittest.TestCase):
                                             self._STR_TRIE_KEYS)
 
 
+@_TrieFactoryParameteriser()
 class TraverseTest(unittest.TestCase):
     _SENTINEL = object()
     _TestNode = collections.namedtuple('TestNode', 'key children value')
@@ -848,22 +861,20 @@ class TraverseTest(unittest.TestCase):
         self.assertEqual(value, node.value)
         return node
 
-    def test_traverse_empty_tree(self):
-        t = pygtrie.CharTrie()
+    def _do_test_traverse_empty_tree(self, trie_factory):
+        t = trie_factory(pygtrie.CharTrie, {})
         r = t.traverse(self._make_test_node)
         self.assertNode(r, '', 0)
 
-    def test_traverse_singleton_tree(self):
-        t = pygtrie.CharTrie()
-        t.update({'a': 10})
-
+    def _do_test_traverse_singleton_tree(self, trie_factory):
+        t = trie_factory(pygtrie.CharTrie, {'a': 10})
         r = t.traverse(self._make_test_node)
         self.assertNode(r, '', 1)
         self.assertNode(r.children[0], 'a', 0, 10)
 
-    def test_traverse(self):
-        t = pygtrie.CharTrie()
-        t.update({'aaa': 1, 'aab': 2, 'aac': 3, 'bb': 4})
+    def _do_test_traverse(self, trie_factory):
+        t = trie_factory(pygtrie.CharTrie,
+                         {'aaa': 1, 'aab': 2, 'aac': 3, 'bb': 4})
 
         r = t.traverse(self._make_test_node)
         # Result:
@@ -888,9 +899,9 @@ class TraverseTest(unittest.TestCase):
         b_node = self.assertNode(r.children[1], 'b', 1)
         self.assertNode(b_node.children[0], 'bb', 0, 4)
 
-    def test_traverse_compressing(self):
-        t = pygtrie.CharTrie()
-        t.update({'aaa': 1, 'aab': 2, 'aac': 3, 'bb': 4})
+    def _do_test_traverse_compressing(self, trie_factory):
+        t = trie_factory(pygtrie.CharTrie,
+                         {'aaa': 1, 'aab': 2, 'aac': 3, 'bb': 4})
 
         def make(path_conv, path, children, value=self._SENTINEL):
             children = sorted(children)
@@ -920,9 +931,9 @@ class TraverseTest(unittest.TestCase):
 
         self.assertNode(r.children[1], 'bb', 0, 4)
 
-    def test_traverse_ignore_subtrie(self):
-        t = pygtrie.CharTrie()
-        t.update({'aaa': 1, 'aab': 2, 'aac': 3, 'b': 4})
+    def _do_test_traverse_ignore_subtrie(self, trie_factory):
+        t = trie_factory(pygtrie.CharTrie,
+                         {'aaa': 1, 'aab': 2, 'aac': 3, 'b': 4})
 
         cnt = [0]
 
