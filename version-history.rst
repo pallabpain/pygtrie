@@ -1,6 +1,19 @@
 Version History
 ---------------
 
+2.3.3: 2020/04/04
+
+- Fix to ‘:class:`AttributeError`: ``_NoChildren`` object has no
+  attribute ``sorted_items``’ failure when iterating over a trie with
+  sorting enabled.  [Thanks to Pallab Pain for reporting]
+
+- Add ``value`` property setter to step objects returned by
+  :func:`pygtrie.Trie.walk_towards` et al.  This deprecate ``set``
+  method.
+
+- The module now exports :const:`pygtrie.__version__` making it
+  possible to determine version of the library at run-time.
+
 2.3.2: 2019/07/18
 
 - Trivial metadata fix
@@ -43,7 +56,7 @@ Version History
 
 - :class:`pygtrie.StringTrie` now checks and explicitly rejects empty
   separators.  Previously empty separator would be accepted but lead
-  to confusing errors later on.  [Thanks to Waren Long].
+  to confusing errors later on.  [Thanks to Waren Long]
 
 - Various documentation improvements, Python 2/3 compatibility and
   test coverage (python-coverage reports 100%).

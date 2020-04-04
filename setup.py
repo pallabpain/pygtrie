@@ -40,7 +40,7 @@ with codecs.open('README.rst', 'r', 'utf-8') as f:
     readme = f.read()
 with codecs.open('version-history.rst', 'r', 'utf-8') as f:
     readme += '\n' + f.read()
-readme, _ = re.subn(r':(?:class|func):`([^`]*)`', r'``\1``', readme)
+readme, _ = re.subn(r':(?:class|func|const):`([^`]*)`', r'``\1``', readme)
 
 
 kwargs = {

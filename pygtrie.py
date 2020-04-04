@@ -40,7 +40,8 @@ from __future__ import absolute_import, division, print_function
 
 __author__ = 'Michal Nazarewicz <mina86@mina86.com>'
 __copyright__ = ('Copyright 2014-2017 Google LLC',
-                 'Copyright 2018-2019 Michal Nazarewicz <mina86@mina86.com>')
+                 'Copyright 2018-2020 Michal Nazarewicz <mina86@mina86.com>')
+__version__ = '2.3.3'
 
 
 import copy as _copy
