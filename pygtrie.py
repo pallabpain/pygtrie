@@ -96,8 +96,8 @@ class _NoChildren(object):
     def __deepcopy__(self, memo):
         return self
 
-    # delete and pick_child are not implemented on purpose since
-    # they should never be called on a node with no children.
+    # delete is not implemented on purpose since it should never be called on
+    # a node with no children.
 
 
 _EMPTY = _NoChildren()
@@ -138,9 +138,6 @@ class _OneChild(object):
     def delete(self, parent, _step):
         parent.children = _EMPTY
 
-    def pick_child(self):
-        return (self.step, self.node)
-
     def copy(self, make_copy, queue):
         cpy = _OneChild(make_copy(self.step), self.node.shallow_copy(make_copy))
         queue.append((cpy.node,))
@@ -178,9 +175,6 @@ class _Children(dict):
         del self[step]
         if len(self) == 1:
             parent.children = _OneChild(*self.popitem())
-
-    def pick_child(self):
-        return next(self.iteritems())
 
     def copy(self, make_copy, queue):
         cpy = _Children()
@@ -902,40 +896,27 @@ class Trie(_abc.MutableMapping):
         return self._set_node(key, value, only_if_missing=True).value
 
     @staticmethod
-    def _cleanup_trace(trace):
-        """Removes empty nodes present on specified trace.
+    def _pop_value(trace):
+        """Removes value from given node and removes any empty nodes.
 
         Args:
             trace: Trace to the node to cleanup as returned by
-                :func:`Trie._get_node`.
+                :func:`Trie._get_node`.  The last element of the trace denotes
+                the node to get value of.
+
+        Returns:
+            Value which was held in the node at the end of specified trace.
+            This may be _EMPTY if the node didn’t have a value in the first
+            place.
         """
         i = len(trace) - 1  # len(path) >= 1 since root is always there
         step, node = trace[i]
+        value, node.value = node.value, _EMPTY
         while i and node.value is _EMPTY and not node.children:
             i -= 1
             parent_step, parent = trace[i]
             parent.children.delete(parent, step)
             step, node = parent_step, parent
-
-    def _pop_from_node(self, node, trace):
-        """Removes a value from given node.
-
-        Args:
-            node: Node to get value of.
-            trace: Trace to that node as returned by :func:`Trie._get_node`.
-
-        Returns:
-            Value of the node.
-
-        Raises:
-            ShortKeyError: If the node has no value associated with it and
-                ``default`` has not been given.
-        """
-        value = node.value
-        if value is _EMPTY:
-            raise ShortKeyError()
-        node.value = _EMPTY
-        self._cleanup_trace(trace)
         return value
 
     def pop(self, key, default=_EMPTY):
@@ -960,11 +941,18 @@ class Trie(_abc.MutableMapping):
                 associated with it nor is a prefix of an existing key.
         """
         try:
-            return self._pop_from_node(*self._get_node(key))
+            _, trace = self._get_node(key)
         except KeyError:
             if default is not _EMPTY:
                 return default
             raise
+        value = self._pop_value(trace)
+        if value is not _EMPTY:
+            return value
+        elif default is not _EMPTY:
+            return default
+        else:
+            raise ShortKeyError()
 
     def popitem(self):
         """Deletes an arbitrary value from the trie and returns it.
@@ -983,12 +971,10 @@ class Trie(_abc.MutableMapping):
         node = self._root
         trace = [(None, node)]
         while node.value is _EMPTY:
-            # pylint thinks node.children is always _NoChildren which is missing
-            # pick_child but we know it must be _OneChild or _Children object:
-            step, node = node.children.pick_child()  # pylint: disable=no-member
+            step, node = next(node.children.iteritems())
             trace.append((step, node))
-        return (self._key_from_path((step for step, _ in trace[1:])),
-                self._pop_from_node(node, trace))
+        key = self._key_from_path((step for step, _ in trace[1:]))
+        return key, self._pop_value(trace)
 
     def __delitem__(self, key_or_slice):
         """Deletes value associated with given key or raises KeyError.
@@ -1030,8 +1016,7 @@ class Trie(_abc.MutableMapping):
             node.children = _EMPTY
         elif node.value is _EMPTY:
             raise ShortKeyError(key)
-        node.value = _EMPTY
-        self._cleanup_trace(trace)
+        self._pop_value(trace)
 
     class _NoneStep(object):
         """Representation of a non-existent step towards non-existent node."""
