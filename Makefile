@@ -7,8 +7,8 @@ test2: test.py pygtrie.py
 	python2 -m doctest pygtrie.py
 
 test3: test.py pygtrie.py
-	python3 $<
-	python3 -m doctest pygtrie.py
+	python3 -X dev $<
+	python3 -X dev -m doctest pygtrie.py
 
 lint: .pylintrc pygtrie.py test.py example.py
 	lint=$$(which pylint3 2>/dev/null) || lint=$$(which pylint) && \
