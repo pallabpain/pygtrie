@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Implementation of a trie data structure.
+"""Pure Python implementation of a trie data structure compatible with Python
+2.x and Python 3.x.
 
 `Trie data structure <http://en.wikipedia.org/wiki/Trie>`_, also known as radix
 or prefix tree, is a tree associating keys to values where all the descendants
