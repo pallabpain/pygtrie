@@ -453,7 +453,7 @@ class Trie(_abc.MutableMapping):
 
         For Trie class, enabling sorting of children is identical to simply
         sorting the list of items since Trie returns keys as tuples.  However,
-        for other implementations such as StringTrie the two may behove subtly
+        for other implementations such as StringTrie the two may behave subtly
         different.  For example, sorting items might produce::
 
             root/foo-bar
@@ -1489,7 +1489,7 @@ class CharTrie(Trie):
     back to the client (for instance when :func:`Trie.keys` method is called),
     those keys are returned as strings.
 
-    Canonical example where this class can be used is a dictionary of words in
+    Common example where this class can be used is a dictionary of words in
     a natural language.  For example::
 
         >>> import pygtrie
@@ -1516,10 +1516,10 @@ class StringTrie(Trie):
     """:class:`pygtrie.Trie` variant accepting strings with a separator as keys.
 
     The trie accepts strings as keys which are split into components using
-    a separator specified during initialisation (forward slash,i.e. ``/``, by
+    a separator specified during initialisation (forward slash, i.e. ``/``, by
     default).
 
-    Canonical example where this class can be used is when keys are paths.  For
+    Common example where this class can be used is when keys are paths.  For
     example, it could map from a path to a request handler::
 
         import pygtrie

@@ -6,25 +6,16 @@ pygtrie
 Installation
 ------------
 
-To install pygtrie, run::
+To install pygtrie, simply run::
 
     pip install pygtrie
 
-Or download the sources and save ``pygtrie.py`` file with your
-project.
+or by adding line such as::
 
-Upgrading from 0.9.x
---------------------
+    pygtrie == 2.*
 
-The 1.0 release introduced backwards incompatibility in naming.  The
-module has been renamed from ``trie`` to ``pygtrie``.  Fortunately,
-updating scripts using pygtrie should boil down to replacing::
-
-    from pytrie import trie
-
-with::
-
-    import pygtrie as trie
+to project’s `requirements file
+<https://pip.pypa.io/en/latest/user_guide/#requirements-files>`_.
 
 Trie classes
 ------------
