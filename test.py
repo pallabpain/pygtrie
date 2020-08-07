@@ -851,7 +851,7 @@ class TraverseTest(unittest.TestCase):
     _TestNode = collections.namedtuple('TestNode', 'key children value')
 
     @classmethod
-    def _make_test_node(cls, path_conv, path, children, value=_SENTINEL):
+    def _make_test_node(cls, path_conv, path, children, has_children, value=_SENTINEL):
         return cls._TestNode(path_conv(path), sorted(children), value)
 
     def assertNode(self, node, key, children=0, value=_SENTINEL):  # pylint: disable=invalid-name
@@ -903,7 +903,7 @@ class TraverseTest(unittest.TestCase):
         t = trie_factory(pygtrie.CharTrie,
                          {'aaa': 1, 'aab': 2, 'aac': 3, 'bb': 4})
 
-        def make(path_conv, path, children, value=self._SENTINEL):
+        def make(path_conv, path, children, has_children, value=self._SENTINEL):
             children = sorted(children)
             if value is self._SENTINEL and len(children) == 1:
                 # There is only one prefix.
@@ -937,7 +937,7 @@ class TraverseTest(unittest.TestCase):
 
         cnt = [0]
 
-        def make(path_conv, path, children, value=self._SENTINEL):
+        def make(path_conv, path, children, has_children, value=self._SENTINEL):
             cnt[0] += 1
             if path and path[0] == 'a':
                 return None
@@ -967,7 +967,7 @@ class RecursionTest(unittest.TestCase):
         Node = collections.namedtuple('Node', 'label neighbours')  # pylint: disable=invalid-name
 
         class Builder(object):
-            def __init__(self, path_conv, path, children, _=None):
+            def __init__(self, path_conv, path, children, has_children, _=None):
                 self.node = Node(path_conv(path), [])
                 self.children = children
                 self.parent = None

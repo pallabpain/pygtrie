@@ -236,7 +236,7 @@ class _Node(object):
                 except IndexError:
                     return
 
-    def traverse(self, node_factory, path_conv, path, iteritems):
+    def traverse(self, node_factory, path_conv, path, iteritems, has_children):
         """Traverses the node and returns another type of node from factory.
 
         Args:
@@ -260,9 +260,9 @@ class _Node(object):
             """Recursively traverses all of node's children."""
             for step, node in iteritems(self.children):
                 yield node.traverse(node_factory, path_conv, path + [step],
-                                    iteritems)
+                                    iteritems, bool(self.children))
 
-        args = [path_conv, tuple(path), children()]
+        args = [path_conv, tuple(path), children(), bool(self.children)]
 
         if self.value is not _EMPTY:
             args.append(self.value)
@@ -1384,7 +1384,7 @@ class Trie(_abc.MutableMapping):
             for root, _, files in os.walk('.'):
                 for name in files: t[os.path.join(root, name)] = True
 
-            def traverse_callback(path_conv, path, children, is_file=False):
+            def traverse_callback(path_conv, path, children, has_children, is_file=False):
                 if path and path[-1] != '.' and path[-1][0] == '.':
                     # Ignore hidden directory (but accept root node and '.')
                     return 0
@@ -1423,7 +1423,7 @@ class Trie(_abc.MutableMapping):
                     for child in children:
                         child.parent = self
 
-            def traverse_callback(path_conv, path, children, is_file=False):
+            def traverse_callback(path_conv, path, children, has_children, is_file=False):
                 if not path or path[-1] == '.' or path[-1][0] != '.':
                     if is_file:
                         return File(path[-1])
@@ -1444,7 +1444,7 @@ class Trie(_abc.MutableMapping):
                 Node = collections.namedtuple('Node', 'path neighbours')
 
                 class Builder(object):
-                    def __init__(self, path_conv, path, children, _=None):
+                    def __init__(self, path_conv, path, children, has_children, _=None):
                         self.node = Node(path_conv(path), [])
                         self.children = children
                         self.parent = None
@@ -1479,7 +1479,7 @@ class Trie(_abc.MutableMapping):
         node, _ = self._get_node(prefix)
         return node.traverse(node_factory, self._key_from_path,
                              list(self.__path_from_key(prefix)),
-                             self._iteritems)
+                             self._iteritems, bool(node.children))
 
 class CharTrie(Trie):
     """A variant of a :class:`pygtrie.Trie` which accepts strings as keys.
